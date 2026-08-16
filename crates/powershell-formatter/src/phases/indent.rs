@@ -48,6 +48,13 @@ pub(crate) fn apply(engine: &mut Engine<'_>) {
     let mut pipelines = find_pipelines(engine);
     // Sort by end so inner pipelines are restored before outer ones.
     pipelines.sort_by_key(|p| (p.end, p.end - p.start));
+    // O(1) end-position lookup: scanning every pipeline per token would be
+    // quadratic on pipeline-heavy files.
+    let mut ends_at: std::collections::HashMap<usize, Vec<usize>> =
+        std::collections::HashMap::new();
+    for (i, p) in pipelines.iter().enumerate() {
+        ends_at.entry(p.end).or_default().push(i);
+    }
 
     let mut level: u32 = 0;
     // For each tracked opener: whether it skipped its increment.
@@ -136,10 +143,12 @@ pub(crate) fn apply(engine: &mut Engine<'_>) {
         }
 
         // Restore levels at pipeline ends.
-        if style != PipelineIndentation::None {
-            for p in pipelines.iter_mut().filter(|p| p.end == pos) {
-                level = level.saturating_sub(p.increments);
-                p.increments = 0;
+        if style != PipelineIndentation::None
+            && let Some(indices) = ends_at.get(&pos)
+        {
+            for &i in indices {
+                level = level.saturating_sub(pipelines[i].increments);
+                pipelines[i].increments = 0;
             }
         }
     }

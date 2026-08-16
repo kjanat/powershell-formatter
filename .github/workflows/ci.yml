@@ -8,17 +8,125 @@ on:
 permissions:
   contents: read
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   rust:
+    name: rust (${{ matrix.os }})
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy,rustfmt
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
+
+  schema-drift:
+    name: schema drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+      - run: cargo run -p dprint-plugin-powershell --features schema --bin generate-schema
+      - run: git diff --exit-code crates/dprint-plugin-powershell/deployment/schema.json
+
+  wasm:
+    name: wasm builds + dprint e2e + node package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v5.0.0
+        with:
+          node-version: 22
+      - name: Install tools
+        run: |
+          npm install -g dprint
+          cargo install wasm-bindgen-cli --version 0.2.127 --locked
+      - name: dprint plugin end-to-end
+        run: crates/dprint-plugin-powershell/tests/e2e.sh
+      - name: Build and test the npm package
+        run: |
+          packages/formatter/build.sh
+          cd packages/formatter
+          npm test
+      - name: Report artifact sizes and enforce budget
+        run: |
+          set -euo pipefail
+          plugin=target/wasm32-unknown-unknown/wasm-release/dprint_plugin_powershell.wasm
+          browser=packages/formatter/dist/powershell_formatter_wasm_bg.wasm
+          for f in "$plugin" "$browser"; do
+            raw=$(stat -c%s "$f")
+            gz=$(gzip -9 -c "$f" | wc -c)
+            echo "$f: raw=${raw} gzip=${gz}"
+            # Budget: the previous prototype was ~19 MB; hard-fail if a
+            # change balloons the artifact past 1 MB raw.
+            if [ "$raw" -gt 1048576 ]; then
+              echo "size budget exceeded for $f" >&2
+              exit 1
+            fi
+          done
+
+  fuzz-smoke:
+    name: fuzz smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+        with:
+          workspaces: |
+            .
+            fuzz
+      - run: cargo install cargo-fuzz --locked
+      - name: Seed fuzz corpus from the real-world corpus
+        run: |
+          mkdir -p fuzz/corpus/lexer fuzz/corpus/parser fuzz/corpus/formatter
+          for f in tests/corpus/files/*.ps1 tests/powershell-oracle/inputs/*.ps1; do
+            b=$(basename "$f" .ps1)
+            cp "$f" "fuzz/corpus/lexer/$b"
+            cp "$f" "fuzz/corpus/parser/$b"
+            cp "$f" "fuzz/corpus/formatter/$b"
+          done
+      - name: Short fuzz pass on every target
+        run: |
+          cargo +nightly fuzz run lexer -- -max_total_time=30
+          cargo +nightly fuzz run parser -- -max_total_time=30
+          cargo +nightly fuzz run formatter -- -max_total_time=60
+
+  powershell-oracles:
+    name: PowerShell + PSScriptAnalyzer oracles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          (Get-Module -ListAvailable PSScriptAnalyzer).Version
+      - name: Regenerate oracle fixtures with this runner's PowerShell
+        shell: pwsh
+        run: |
+          ./tests/powershell-oracle/generate.ps1
+          ./tests/pssa-parity/generate.ps1
+          ./tests/pssa-parity/generate-catalog.ps1
+      - name: Differential tests against freshly generated fixtures
+        run: |
+          cargo test -p powershell-parser --test oracle
+          cargo test -p powershell-formatter --test pssa_parity
+      - name: Fail if committed fixtures drifted from the pinned versions
+        run: git diff --stat -- tests/powershell-oracle/fixtures tests/pssa-parity/expected

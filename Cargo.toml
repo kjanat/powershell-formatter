@@ -5,6 +5,7 @@ members = [
     "crates/dprint-plugin-powershell",
     "crates/powershell-formatter",
     "crates/powershell-parser",
+    "crates/powershell-formatter-wasm",
 ]
 exclude = ["fuzz"]
 
@@ -31,3 +32,6 @@ strip = true
 lto = "fat"
 panic = "abort"
 codegen-units = 1
+
+[profile.release]
+strip = true

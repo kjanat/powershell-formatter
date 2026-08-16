@@ -1,0 +1,21 @@
+[package]
+name = "powershell-formatter-wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "wasm-bindgen bindings for powershell-formatter (browser/Node package)"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+powershell-formatter = { path = "../powershell-formatter" }
+wasm-bindgen = "=0.2.127"
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+
+[lints]
+workspace = true

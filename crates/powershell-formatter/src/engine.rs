@@ -618,6 +618,7 @@ pub(crate) fn run_phases(engine: &mut Engine<'_>, catalog: Option<&dyn CommandCa
     crate::phases::braces::place_close_braces(engine);
     crate::phases::braces::place_open_braces(engine);
     crate::phases::whitespace::apply(engine);
+    crate::phases::reflow::apply(engine);
     crate::phases::indent::apply(engine);
     crate::phases::align::apply(engine);
     crate::phases::casing::apply(engine, catalog);

@@ -1,12 +1,41 @@
 {
-  "name": "@kjanat/powershell-formatter",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Browser and Node.js bindings for powershell-formatter",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/kjanat/powershell-formatter.git"
-  }
+	"name": "@kjanat/powershell-formatter",
+	"version": "0.0.0",
+	"description": "Fast, standalone PowerShell formatter for browsers and Node.js (WebAssembly, no PowerShell required)",
+	"keywords": [
+		"powershell",
+		"formatter",
+		"wasm",
+		"psscriptanalyzer"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kjanat/powershell-formatter.git",
+		"directory": "packages/formatter"
+	},
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./index.d.ts",
+			"node": "./index.node.js",
+			"default": "./index.js"
+		}
+	},
+	"main": "./index.node.js",
+	"types": "./index.d.ts",
+	"files": [
+		"index.js",
+		"index.node.js",
+		"index.d.ts",
+		"dist/powershell_formatter_wasm.js",
+		"dist/powershell_formatter_wasm_bg.wasm"
+	],
+	"scripts": {
+		"build": "./build.sh",
+		"test": "node --test test/package.test.mjs"
+	},
+	"engines": {
+		"node": ">=18"
+	}
 }

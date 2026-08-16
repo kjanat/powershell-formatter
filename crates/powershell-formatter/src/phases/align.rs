@@ -15,21 +15,32 @@ pub(crate) fn apply(engine: &mut Engine<'_>) {
         return;
     }
     let len = engine.len();
-    for pos in 0..len {
-        match engine.kind(pos) {
-            TokenKind::AtCurly => {
-                if let Some(close) = engine.sig_match[pos] {
-                    let sites = hashtable_sites(engine, pos, close);
-                    align_group(engine, sites);
+    // The column map is O(source); computing it per group would make
+    // alignment quadratic on hashtable-heavy files. Instead share one map
+    // across all groups per pass, and run a second pass so groups whose
+    // columns were shifted by an enclosing group's adjustment settle.
+    for _ in 0..2 {
+        let cols = column_map(engine);
+        let mut changed = false;
+        for pos in 0..len {
+            match engine.kind(pos) {
+                TokenKind::AtCurly => {
+                    if let Some(close) = engine.sig_match[pos] {
+                        let sites = hashtable_sites(engine, pos, close);
+                        changed |= align_group(engine, &cols, sites);
+                    }
                 }
-            }
-            TokenKind::LCurly if is_enum_body(engine, pos) => {
-                if let Some(close) = engine.sig_match[pos] {
-                    let sites = enum_sites(engine, pos, close);
-                    align_group(engine, sites);
+                TokenKind::LCurly if is_enum_body(engine, pos) => {
+                    if let Some(close) = engine.sig_match[pos] {
+                        let sites = enum_sites(engine, pos, close);
+                        changed |= align_group(engine, &cols, sites);
+                    }
                 }
+                _ => {}
             }
-            _ => {}
+        }
+        if !changed {
+            break;
         }
     }
 }
@@ -143,11 +154,11 @@ fn enum_sites(engine: &Engine<'_>, open: usize, close: usize) -> Vec<Site> {
     sites
 }
 
-fn align_group(engine: &mut Engine<'_>, sites: Vec<Site>) {
+/// Returns true when any gap decision changed.
+fn align_group(engine: &mut Engine<'_>, cols: &Columns, sites: Vec<Site>) -> bool {
     if sites.is_empty() {
-        return;
+        return false;
     }
-    let cols = column_map(engine);
     // Discard lines holding more than one site.
     let mut by_line: std::collections::HashMap<u32, u32> = std::collections::HashMap::new();
     let lines: Vec<u32> = sites.iter().map(|s| cols.line[s.lhs_end]).collect();
@@ -161,7 +172,7 @@ fn align_group(engine: &mut Engine<'_>, sites: Vec<Site>) {
         .map(|(s, _)| s)
         .collect();
     if kept.is_empty() {
-        return;
+        return false;
     }
     let target = kept
         .iter()
@@ -177,13 +188,19 @@ fn align_group(engine: &mut Engine<'_>, sites: Vec<Site>) {
             Some((eq, u16::try_from(spaces).unwrap_or(u16::MAX)))
         })
         .collect();
+    let mut changed = false;
     for (eq, spaces) in updates {
-        engine.gaps[eq].exact_spaces = Some(spaces.max(1));
+        let new = Some(spaces.max(1));
         if matches!(engine.gaps[eq].line, LineState::AsIs) && engine.gaps[eq].orig_newline {
             // Should not happen (sites require same-line), defensive.
-            engine.gaps[eq].exact_spaces = None;
+            continue;
+        }
+        if engine.gaps[eq].exact_spaces != new {
+            engine.gaps[eq].exact_spaces = new;
+            changed = true;
         }
     }
+    changed
 }
 
 /// Simulated final columns (1-based, exclusive end) and line numbers per

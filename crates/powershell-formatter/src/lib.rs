@@ -266,6 +266,27 @@ mod tests {
     }
 
     #[test]
+    fn long_pipelines_reflow_at_line_width() {
+        let src = "Get-Process | Where-Object { $_.CPU -gt 5 } | Sort-Object CPU | Select-Object -First 3";
+        let narrow = FormatOptions {
+            line_width: 60,
+            ..FormatOptions::default()
+        };
+        let out = format(src, &narrow).text;
+        assert_eq!(
+            out,
+            "Get-Process |\n    Where-Object { $_.CPU -gt 5 } |\n    Sort-Object CPU |\n    Select-Object -First 3"
+        );
+        // Idempotent, and disabled when lineWidth is 0.
+        assert_eq!(format(&out, &narrow).text, out);
+        let off = FormatOptions {
+            line_width: 0,
+            ..FormatOptions::default()
+        };
+        assert_eq!(format(src, &off).text, src);
+    }
+
+    #[test]
     fn range_formatting_limits_changes() {
         let src = "if($a){'x'}\nif($b){'y'}";
         let out = format_range(

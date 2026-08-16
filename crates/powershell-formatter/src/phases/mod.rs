@@ -4,4 +4,5 @@ pub(crate) mod align;
 pub(crate) mod braces;
 pub(crate) mod casing;
 pub(crate) mod indent;
+pub(crate) mod reflow;
 pub(crate) mod whitespace;
