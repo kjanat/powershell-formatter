@@ -1,0 +1,6 @@
+/target/
+/node_modules/
+/dist/
+coverage/
+*.wasm
+.DS_Store

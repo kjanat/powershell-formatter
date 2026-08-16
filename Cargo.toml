@@ -1,0 +1,22 @@
+[workspace]
+resolver = "3"
+members = [
+    "cli/psfmt",
+    "crates/dprint-plugin-powershell",
+    "crates/powershell-formatter",
+    "crates/powershell-parser",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/kjanat/powershell-formatter"
+authors = ["Kaj Kowalski"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"

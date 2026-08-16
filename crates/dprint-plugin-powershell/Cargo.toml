@@ -1,0 +1,17 @@
+[package]
+name = "dprint-plugin-powershell"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+powershell-formatter = { path = "../powershell-formatter" }
+
+[lints]
+workspace = true
