@@ -9,3 +9,4 @@ coverage/
 /fuzz/artifacts/
 /fuzz/corpus/
 /fuzz/coverage/
+*.log

@@ -1,17 +1,19 @@
 {
+  "$id": "https://plugins.dprint.dev/kjanat/powershell/0.0.0/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "BraceStyle": {
       "description": "Where opening braces of statement blocks go.",
       "oneOf": [
         {
-          "const": "sameLine",
           "description": "`if ($x) {` — brace on the same line (K&R / OTBS / Stroustrup).",
-          "type": "string"
+          "type": "string",
+          "const": "sameLine"
         },
         {
-          "const": "nextLine",
           "description": "Brace on its own line (Allman).",
-          "type": "string"
+          "type": "string",
+          "const": "nextLine"
         }
       ]
     },
@@ -19,14 +21,14 @@
       "description": "Whether `else`/`elseif`/`catch`/`finally` cuddle onto the closing brace.",
       "oneOf": [
         {
-          "const": "nextLine",
           "description": "`}` then `else {` on the next line (Stroustrup — PSSA default).",
-          "type": "string"
+          "type": "string",
+          "const": "nextLine"
         },
         {
-          "const": "cuddled",
           "description": "`} else {` (OTBS).",
-          "type": "string"
+          "type": "string",
+          "const": "cuddled"
         }
       ]
     },
@@ -34,19 +36,19 @@
       "description": "Line-ending handling for output.",
       "oneOf": [
         {
-          "const": "auto",
           "description": "Keep the input's detected dominant newline style (PSSA behavior).",
-          "type": "string"
+          "type": "string",
+          "const": "auto"
         },
         {
-          "const": "lf",
           "description": "Force `\\n`.",
-          "type": "string"
+          "type": "string",
+          "const": "lf"
         },
         {
-          "const": "crlf",
           "description": "Force `\\r\\n`.",
-          "type": "string"
+          "type": "string",
+          "const": "crlf"
         }
       ]
     },
@@ -54,177 +56,175 @@
       "description": "How pipeline continuation lines are indented, mirroring PSSA's\n`PipelineIndentation`.",
       "oneOf": [
         {
-          "const": "increaseIndentationForFirstPipeline",
           "description": "Indent once at the first line-ending pipe of a pipeline.",
-          "type": "string"
+          "type": "string",
+          "const": "increaseIndentationForFirstPipeline"
         },
         {
-          "const": "increaseIndentationAfterEveryPipeline",
           "description": "Indent one more level after every line-ending pipe.",
-          "type": "string"
+          "type": "string",
+          "const": "increaseIndentationAfterEveryPipeline"
         },
         {
-          "const": "noIndentation",
           "description": "Continuation lines stay at the pipeline's own level.",
-          "type": "string"
+          "type": "string",
+          "const": "noIndentation"
         },
         {
-          "const": "none",
           "description": "Leave lines after a trailing pipe exactly as written.",
-          "type": "string"
+          "type": "string",
+          "const": "none"
         }
       ]
     }
   },
-  "$id": "https://plugins.dprint.dev/kjanat/powershell/0.0.0/schema.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PowerShell formatter configuration",
   "description": "The complete formatting configuration.\n\nDefaults reproduce PSScriptAnalyzer's `CodeFormatting` preset.",
+  "type": "object",
   "properties": {
     "alignAssignment": {
-      "default": true,
       "description": "Align `=` in multi-member hashtables and enums\n(`PSAlignAssignmentStatement`).",
+      "default": true,
       "type": "boolean"
     },
     "braceStyle": {
       "$ref": "#/$defs/BraceStyle",
-      "default": "sameLine",
-      "description": "Opening-brace placement (`PSPlaceOpenBrace.OnSameLine`)."
+      "description": "Opening-brace placement (`PSPlaceOpenBrace.OnSameLine`).",
+      "default": "sameLine"
     },
     "branchKeywordPlacement": {
       "$ref": "#/$defs/BranchKeywordPlacement",
-      "default": "nextLine",
-      "description": "Branch keyword placement after `}`\n(`PSPlaceCloseBrace.NewLineAfter`, inverted sense)."
+      "description": "Branch keyword placement after `}`\n(`PSPlaceCloseBrace.NewLineAfter`, inverted sense).",
+      "default": "nextLine"
     },
     "collapseSpaceAroundPipe": {
-      "default": false,
       "description": "Also collapse redundant spaces around `|`\n(`PSUseConsistentWhitespace.CheckPipeForRedundantWhitespace`).",
+      "default": false,
       "type": "boolean"
     },
     "collapseSpaceBetweenParameters": {
-      "default": false,
       "description": "Collapse runs of spaces between command elements\n(`PSUseConsistentWhitespace.CheckParameter`).",
+      "default": false,
       "type": "boolean"
     },
     "commandCasing": {
-      "default": true,
       "description": "Correct command/parameter casing via the injected\n[`crate::CommandCatalog`] (`PSUseCorrectCasing.CheckCommands`).",
+      "default": true,
       "type": "boolean"
     },
     "endOfLine": {
       "$ref": "#/$defs/EndOfLine",
-      "default": "auto",
-      "description": "Output newline handling."
+      "description": "Output newline handling.",
+      "default": "auto"
     },
     "finalNewline": {
-      "default": null,
       "description": "Ensure the output ends with exactly one final newline. `None`\npreserves the input's final-newline state (PSSA behavior).",
+      "default": null,
       "type": [
         "boolean",
         "null"
       ]
     },
     "ignoreAssignmentInHashtable": {
-      "default": true,
       "description": "Skip `=` inside multi-line hashtables when checking operator spacing\n(`PSUseConsistentWhitespace.IgnoreAssignmentOperatorInsideHashTable`).",
+      "default": true,
       "type": "boolean"
     },
     "ignoreOneLineBlock": {
-      "default": true,
       "description": "Leave one-line `{ ... }` blocks alone\n(`PSPlaceOpenBrace/PSPlaceCloseBrace.IgnoreOneLineBlock`).",
+      "default": true,
       "type": "boolean"
     },
     "indentWidth": {
-      "default": 4,
       "description": "Spaces per indentation level (ignored when `use_tabs`).",
-      "format": "uint8",
-      "maximum": 255,
+      "default": 4,
+      "type": "integer",
       "minimum": 0,
-      "type": "integer"
+      "maximum": 255,
+      "format": "uint8"
     },
     "indentation": {
-      "default": true,
       "description": "Reindent lines (`PSUseConsistentIndentation`).",
+      "default": true,
       "type": "boolean"
     },
     "keywordCasing": {
-      "default": true,
       "description": "Lowercase keywords (`PSUseCorrectCasing.CheckKeyword`).",
+      "default": true,
       "type": "boolean"
     },
     "lineWidth": {
-      "default": 120,
       "description": "Target maximum line width. Used by width-aware layout; `0` disables\nwidth-based decisions.",
-      "format": "uint16",
-      "maximum": 65535,
+      "default": 120,
+      "type": "integer",
       "minimum": 0,
-      "type": "integer"
+      "maximum": 65535,
+      "format": "uint16"
     },
     "newlineAfterOpenBrace": {
-      "default": true,
       "description": "Require a newline after every opening brace\n(`PSPlaceOpenBrace.NewLineAfter`).",
+      "default": true,
       "type": "boolean"
     },
     "noEmptyLineBeforeCloseBrace": {
-      "default": false,
       "description": "Remove blank lines directly before `}`\n(`PSPlaceCloseBrace.NoEmptyLineBefore`).",
+      "default": false,
       "type": "boolean"
     },
     "operatorCasing": {
-      "default": true,
       "description": "Lowercase operators (`PSUseCorrectCasing.CheckOperator`).",
+      "default": true,
       "type": "boolean"
     },
     "pipelineIndentation": {
       "$ref": "#/$defs/PipelineIndentation",
-      "default": "increaseIndentationForFirstPipeline",
-      "description": "Pipeline continuation indentation style."
+      "description": "Pipeline continuation indentation style.",
+      "default": "increaseIndentationForFirstPipeline"
     },
     "placeCloseBrace": {
-      "default": true,
       "description": "Run the closing-brace placement rule at all\n(`PSPlaceCloseBrace.Enable`).",
+      "default": true,
       "type": "boolean"
     },
     "placeOpenBrace": {
-      "default": true,
       "description": "Run the opening-brace placement rule at all (`PSPlaceOpenBrace.Enable`).",
+      "default": true,
       "type": "boolean"
     },
     "spaceAfterKeyword": {
-      "default": true,
       "description": "Enforce a space between keywords and `(`\n(`PSUseConsistentWhitespace.CheckOpenParen`).",
+      "default": true,
       "type": "boolean"
     },
     "spaceAfterSeparator": {
-      "default": true,
       "description": "Enforce a space after `,`/`;`\n(`PSUseConsistentWhitespace.CheckSeparator`).",
+      "default": true,
       "type": "boolean"
     },
     "spaceAroundOperator": {
-      "default": true,
       "description": "Enforce single spaces around binary/assignment operators\n(`PSUseConsistentWhitespace.CheckOperator`).",
+      "default": true,
       "type": "boolean"
     },
     "spaceAroundPipe": {
-      "default": true,
       "description": "Add missing spaces around `|` (`PSUseConsistentWhitespace.CheckPipe`).",
+      "default": true,
       "type": "boolean"
     },
     "spaceBeforeOpenBrace": {
-      "default": true,
       "description": "Enforce a space before opening braces\n(`PSUseConsistentWhitespace.CheckOpenBrace`).",
+      "default": true,
       "type": "boolean"
     },
     "spaceInsideBrace": {
-      "default": true,
       "description": "Enforce single spaces just inside one-line braces\n(`PSUseConsistentWhitespace.CheckInnerBrace`).",
+      "default": true,
       "type": "boolean"
     },
     "useTabs": {
-      "default": false,
       "description": "Indent with tabs instead of spaces.",
+      "default": false,
       "type": "boolean"
     }
-  },
-  "title": "PowerShell formatter configuration",
-  "type": "object"
+  }
 }

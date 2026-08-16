@@ -1,30 +1,30 @@
 [package]
-name = "dprint-plugin-powershell"
-version.workspace = true
-edition.workspace = true
+name                   = "dprint-plugin-powershell"
+version.workspace      = true
+edition.workspace      = true
 rust-version.workspace = true
-license.workspace = true
-repository.workspace = true
-description = "dprint Wasm plugin that formats PowerShell"
-publish = false
+description            = "dprint Wasm plugin that formats PowerShell"
+repository.workspace   = true
+license.workspace      = true
+publish                = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name              = "generate-schema"
+path              = "src/bin/generate_schema.rs"
+required-features = ["schema"]
+
 [dependencies]
-dprint-core = { version = "0.68", features = ["wasm"] }
+dprint-core          = { version = "0.68", features = ["wasm"] }
 powershell-formatter = { path = "../powershell-formatter" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-schemars = { version = "1", optional = true }
+schemars             = { version = "1", optional = true }
+serde                = { version = "1", features = ["derive"] }
+serde_json           = "1"
 
 [features]
 schema = ["dep:schemars", "powershell-formatter/schema"]
-
-[[bin]]
-name = "generate-schema"
-path = "src/bin/generate_schema.rs"
-required-features = ["schema"]
 
 [lints]
 workspace = true

@@ -1,37 +1,37 @@
 [package]
-name = "powershell-formatter-fuzz"
+name    = "powershell-formatter-fuzz"
 version = "0.0.0"
-publish = false
 edition = "2024"
+publish = false
 
 [package.metadata]
 cargo-fuzz = true
 
+[[bin]]
+bench = false
+doc   = false
+name  = "lexer"
+path  = "fuzz_targets/lexer.rs"
+test  = false
+
+[[bin]]
+bench = false
+doc   = false
+name  = "parser"
+path  = "fuzz_targets/parser.rs"
+test  = false
+
+[[bin]]
+bench = false
+doc   = false
+name  = "formatter"
+path  = "fuzz_targets/formatter.rs"
+test  = false
+
 [dependencies]
-libfuzzer-sys = "0.4"
-powershell-parser = { path = "../crates/powershell-parser" }
+libfuzzer-sys        = "0.4"
 powershell-formatter = { path = "../crates/powershell-formatter" }
-
-[[bin]]
-name = "lexer"
-path = "fuzz_targets/lexer.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "parser"
-path = "fuzz_targets/parser.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "formatter"
-path = "fuzz_targets/formatter.rs"
-test = false
-doc = false
-bench = false
+powershell-parser    = { path = "../crates/powershell-parser" }
 
 [profile.release]
 debug = 1
