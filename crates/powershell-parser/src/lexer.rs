@@ -434,7 +434,13 @@ impl<'src> Lexer<'src> {
         match c {
             '{' => {
                 self.pos += 1;
-                self.emit(TokenKind::LCurly, start, TokenFlags::empty());
+                let mut flags = TokenFlags::empty();
+                if matches!(self.mode(), Mode::CommandArgs | Mode::DefinitionName) {
+                    // A script block passed as a command argument
+                    // (`% { ... }`, `& { ... }`).
+                    flags |= TokenFlags::COMMAND_ELEMENT;
+                }
+                self.emit(TokenKind::LCurly, start, flags);
                 let body_mode = if self.pending_signature_body {
                     Mode::ExprOperand
                 } else {
@@ -1796,6 +1802,32 @@ impl<'src> Lexer<'src> {
                         flags |= TokenFlags::NONSTANDARD_CASE;
                     }
                     self.emit(TokenKind::Keyword(Keyword::In), start, flags);
+                    self.set_mode(Mode::StatementStart);
+                    return;
+                }
+                // Statement-continuation keywords directly after a closing
+                // brace: `}else{`, `}elseif(`, `}catch{`, `}finally{`,
+                // `}while(` (do-while), `}until(`.
+                if mode == Mode::ExprOperator
+                    && self
+                        .last_significant()
+                        .is_some_and(|k| k == TokenKind::RCurly)
+                    && let Some(kw) = Keyword::lookup(word)
+                    && matches!(
+                        kw,
+                        Keyword::Else
+                            | Keyword::ElseIf
+                            | Keyword::Catch
+                            | Keyword::Finally
+                            | Keyword::While
+                            | Keyword::Until
+                    )
+                {
+                    let mut flags = TokenFlags::empty();
+                    if word != kw.canonical() {
+                        flags |= TokenFlags::NONSTANDARD_CASE;
+                    }
+                    self.emit(TokenKind::Keyword(kw), start, flags);
                     self.set_mode(Mode::StatementStart);
                     return;
                 }

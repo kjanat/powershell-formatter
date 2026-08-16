@@ -368,6 +368,10 @@ bitflags::bitflags! {
         /// A `-` prefixed token that could be operator or parameter; the
         /// lexer resolved it as marked but structural analysis may care.
         const DASH_WORD = 1 << 6;
+        /// A `{` opening a script block passed as a command argument
+        /// (`ForEach-Object { ... }`). Brace-placement rules must not move
+        /// it.
+        const COMMAND_ELEMENT = 1 << 7;
     }
 }
 

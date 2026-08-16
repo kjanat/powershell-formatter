@@ -1,55 +1,168 @@
 //! Host-independent PowerShell formatting engine.
+//!
+//! One lexical/structural analysis, one set of layout decisions, one render:
+//! no PowerShell process, no runspace, no CLR. Behavior follows
+//! PSScriptAnalyzer's `Invoke-Formatter` (see `docs/formatting.md` for the
+//! documented, intentional divergences).
+//!
+//! ```
+//! use powershell_formatter::{FormatOptions, format};
+//!
+//! let result = format("function foo {\n\"hello\"\n  }", &FormatOptions::default());
+//! assert_eq!(result.text, "function foo {\n    \"hello\"\n}");
+//! ```
 
-use powershell_parser::parse;
+mod catalog;
+mod engine;
+mod options;
+mod phases;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum BraceStyle {
-    #[default]
-    SameLine,
-    NextLine,
-}
+pub use catalog::{CommandCatalog, JsonCatalog};
+pub use options::{
+    BraceStyle, BranchKeywordPlacement, EndOfLine, FormatOptions, PipelineIndentation,
+};
+pub use powershell_parser::{Diagnostic, DiagnosticCode, Position, Severity, Span};
 
+use powershell_parser::{LineIndex, parse};
+
+/// The outcome of a formatting request.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FormatOptions {
-    pub brace_style: BraceStyle,
-    pub indent_width: u8,
-    pub use_tabs: bool,
-    pub line_width: u16,
+#[non_exhaustive]
+pub struct FormatResult {
+    /// The formatted source (identical to the input when formatting was
+    /// skipped or made no changes).
+    pub text: String,
+    /// Diagnostics collected during scanning/analysis.
+    pub diagnostics: Vec<Diagnostic>,
+    /// False when structural/lexical problems made formatting unsafe and
+    /// the input was preserved unchanged.
+    pub formatted: bool,
 }
 
-impl Default for FormatOptions {
-    fn default() -> Self {
-        Self {
-            brace_style: BraceStyle::SameLine,
-            indent_width: 4,
-            use_tabs: false,
-            line_width: 100,
-        }
+/// A line/column range in `Invoke-Formatter -Range` style: 1-based start
+/// line/column and end line/column (end-exclusive columns, matching
+/// PowerShell extents).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FormatRange {
+    pub start_line: u32,
+    pub start_column: u32,
+    pub end_line: u32,
+    pub end_column: u32,
+}
+
+/// Format a complete PowerShell source string with the default (or given)
+/// options and no command catalog.
+#[must_use]
+pub fn format(source: &str, options: &FormatOptions) -> FormatResult {
+    format_impl(source, options, None, None)
+}
+
+/// Format with an injected command catalog for command/parameter casing.
+#[must_use]
+pub fn format_with_catalog(
+    source: &str,
+    options: &FormatOptions,
+    catalog: &dyn CommandCatalog,
+) -> FormatResult {
+    format_impl(source, options, Some(catalog), None)
+}
+
+/// Format only the given line/column range, leaving the rest byte-identical.
+///
+/// Matching `Invoke-Formatter -Range`, only whole corrections inside the
+/// range are applied; the range does not expand beyond what is needed.
+#[must_use]
+pub fn format_range(source: &str, options: &FormatOptions, range: FormatRange) -> FormatResult {
+    format_impl(source, options, None, Some(range))
+}
+
+/// Range formatting with a catalog.
+#[must_use]
+pub fn format_range_with_catalog(
+    source: &str,
+    options: &FormatOptions,
+    catalog: &dyn CommandCatalog,
+    range: FormatRange,
+) -> FormatResult {
+    format_impl(source, options, Some(catalog), Some(range))
+}
+
+fn format_impl(
+    source: &str,
+    options: &FormatOptions,
+    catalog: Option<&dyn CommandCatalog>,
+    range: Option<FormatRange>,
+) -> FormatResult {
+    let analysis = parse(source);
+
+    // Safety policy: structurally uncertain input is preserved untouched.
+    if analysis.is_incomplete {
+        let mut diagnostics = analysis.diagnostics;
+        let index = LineIndex::new(source);
+        diagnostics.push(Diagnostic::new(
+            DiagnosticCode::FormattingSkipped,
+            Severity::Info,
+            "input has unbalanced or unterminated syntax; formatting skipped to avoid corrupting it",
+            Span::new(0, 0),
+            index.position(source, 0),
+        ));
+        return FormatResult {
+            text: source.to_owned(),
+            diagnostics,
+            formatted: false,
+        };
+    }
+
+    let byte_range = range.map(|r| {
+        let index = LineIndex::new(source);
+        let start = index.offset(
+            source,
+            Position {
+                line: r.start_line,
+                column: r.start_column,
+            },
+        );
+        let end = index.offset(
+            source,
+            Position {
+                line: r.end_line,
+                column: r.end_column,
+            },
+        );
+        Span::new(start.min(end), end.max(start))
+    });
+
+    let mut engine = engine::Engine::new(source, &analysis, options);
+    engine::run_phases(&mut engine, catalog);
+    let mut text = engine.render(byte_range);
+
+    if range.is_none() {
+        apply_final_newline(&mut text, options, engine.newline);
+    }
+
+    FormatResult {
+        text,
+        diagnostics: analysis.diagnostics,
+        formatted: true,
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FormatResult {
-    pub text: String,
-    pub diagnostics: Vec<Diagnostic>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Diagnostic {
-    pub message: String,
-}
-
-/// Format a complete PowerShell source string.
-///
-/// This scaffold intentionally preserves the source unchanged. Calling the parser here fixes the
-/// package boundary now so the scanner/layout implementation can evolve behind this API.
-#[must_use]
-pub fn format(source: &str, _options: &FormatOptions) -> FormatResult {
-    let _analysis = parse(source);
-
-    FormatResult {
-        text: source.to_owned(),
-        diagnostics: Vec::new(),
+fn apply_final_newline(text: &mut String, options: &FormatOptions, newline: &str) {
+    match options.final_newline {
+        None => {}
+        Some(true) => {
+            while text.ends_with('\n') || text.ends_with('\r') {
+                text.pop();
+            }
+            if !text.is_empty() {
+                text.push_str(newline);
+            }
+        }
+        Some(false) => {
+            while text.ends_with('\n') || text.ends_with('\r') {
+                text.pop();
+            }
+        }
     }
 }
 
@@ -57,12 +170,83 @@ pub fn format(source: &str, _options: &FormatOptions) -> FormatResult {
 mod tests {
     use super::*;
 
-    #[test]
-    fn scaffold_is_lossless() {
-        let source = "function Test { 'hé' }\n";
-        let result = format(source, &FormatOptions::default());
+    fn fmt(src: &str) -> String {
+        format(src, &FormatOptions::default()).text
+    }
 
-        assert_eq!(result.text, source);
-        assert!(result.diagnostics.is_empty());
+    #[test]
+    fn baseline_function() {
+        assert_eq!(
+            fmt("function foo {\n\"hello\"\n  }"),
+            "function foo {\n    \"hello\"\n}"
+        );
+    }
+
+    #[test]
+    fn compact_if_else() {
+        // Oracle-verified: Invoke-Formatter 1.25 produces exactly this.
+        let out = fmt("IF($x-EQ 1){'yes'}ELSE{'no'}");
+        assert_eq!(out, "if ($x -eq 1) { 'yes' }else { 'no' }");
+    }
+
+    #[test]
+    fn hashtable_not_scriptblock() {
+        let src = "$x = @{ one = 1; two = 2 }";
+        assert_eq!(fmt(src), src);
+    }
+
+    #[test]
+    fn here_string_untouched() {
+        let src = "$x = @'\ncontent belongs exactly here\n'@";
+        assert_eq!(fmt(src), src);
+    }
+
+    #[test]
+    fn incomplete_input_preserved() {
+        let src = "function f {\n  'x'\n";
+        let res = format(src, &FormatOptions::default());
+        assert_eq!(res.text, src);
+        assert!(!res.formatted);
+        assert!(
+            res.diagnostics
+                .iter()
+                .any(|d| d.code == DiagnosticCode::FormattingSkipped)
+        );
+    }
+
+    #[test]
+    fn idempotent_on_samples() {
+        for src in [
+            "function foo {\n\"hello\"\n  }",
+            "IF($x-EQ 1){'yes'}ELSE{'no'}",
+            "$x = @{ one = 1; two = 2 }",
+            "foreach ($x in 1..10) {\n$x\n}",
+            "Get-Process |\nWhere-Object CPU |\nSelect-Object Name",
+        ] {
+            let once = fmt(src);
+            let twice = fmt(&once);
+            assert_eq!(once, twice, "not idempotent for {src:?}");
+        }
+    }
+
+    #[test]
+    fn range_formatting_limits_changes() {
+        let src = "if($a){'x'}\nif($b){'y'}";
+        let out = format_range(
+            src,
+            &FormatOptions::default(),
+            FormatRange {
+                start_line: 2,
+                start_column: 1,
+                end_line: 2,
+                end_column: 12,
+            },
+        )
+        .text;
+        // Line 1 untouched; every correction inside the range applies.
+        // (Intentional divergence: Invoke-Formatter's iterative fixer drops
+        // corrections that drift past the range as earlier edits grow the
+        // line — see docs/formatting.md.)
+        assert_eq!(out, "if($a){'x'}\nif ($b) { 'y' }");
     }
 }

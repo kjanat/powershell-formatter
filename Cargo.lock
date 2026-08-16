@@ -32,6 +32,8 @@ name = "powershell-formatter"
 version = "0.0.0"
 dependencies = [
  "powershell-parser",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
