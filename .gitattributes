@@ -1,0 +1,4 @@
+# Oracle/parity/corpus fixtures are byte-exact test data paired with
+# generated expectations; line-ending conversion on checkout (Windows
+# autocrlf) would invalidate them. Never convert anything under tests/.
+tests/** -text
