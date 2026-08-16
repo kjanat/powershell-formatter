@@ -159,9 +159,12 @@ fn corpus_preserves_protected_content_and_token_stream() {
     }
 }
 
-/// Every corpus file formats identically under each preset without panicking.
+/// Each preset formats every corpus file without panicking, and formatting
+/// stays idempotent under that preset (outputs differ *between* presets by
+/// design).
 #[test]
 fn corpus_survives_all_presets() {
+    let paths = corpus_files();
     for opts in [
         FormatOptions::default(),
         FormatOptions::otbs(),
@@ -172,8 +175,8 @@ fn corpus_survives_all_presets() {
             ..FormatOptions::default()
         },
     ] {
-        for path in corpus_files() {
-            let src = std::fs::read_to_string(&path).expect("read");
+        for path in &paths {
+            let src = std::fs::read_to_string(path).expect("read");
             let once = format(&src, &opts);
             let twice = format(&once.text, &opts);
             assert_eq!(

@@ -130,4 +130,4 @@ casing data is injected as JSON — never obtained from a live shell. See
 ## License
 
 MIT. Test fixtures derived from MIT-licensed upstream projects record their
-provenance in `tests/corpus/README.md`.
+provenance in [`tests/corpus/README.md`](tests/corpus/README.md).

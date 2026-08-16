@@ -44,8 +44,13 @@ impl JsonCatalog {
             commands: HashMap<String, Vec<String>>,
         }
         let raw: Raw = serde_json::from_str(json).map_err(|e| e.to_string())?;
-        let mut commands = HashMap::with_capacity(raw.commands.len());
-        for (name, params) in raw.commands {
+        // Sort before inserting: HashMap iteration order would otherwise
+        // decide which spelling wins when two keys differ only in case,
+        // making the formatter's output nondeterministic.
+        let mut entries: Vec<(String, Vec<String>)> = raw.commands.into_iter().collect();
+        entries.sort();
+        let mut commands = HashMap::with_capacity(entries.len());
+        for (name, params) in entries {
             let param_map = params.into_iter().map(|p| (p.to_lowercase(), p)).collect();
             commands.insert(name.to_lowercase(), (name, param_map));
         }
@@ -86,6 +91,24 @@ impl CommandCatalog for JsonCatalog {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Case-variant duplicate keys must resolve the same way on every run
+    /// (HashMap iteration order used to pick the winner).
+    #[cfg(feature = "serde")]
+    #[test]
+    fn duplicate_case_variant_commands_are_deterministic() {
+        let json = r#"{"commands":{"Get-Item":["Path"],"get-item":["path"],"GET-ITEM":["PATH"]}}"#;
+        let first = JsonCatalog::from_json(json).expect("parse");
+        for _ in 0..16 {
+            let again = JsonCatalog::from_json(json).expect("parse");
+            assert_eq!(
+                first.canonical_command("get-item"),
+                again.canonical_command("get-item")
+            );
+        }
+        // Sorted insertion: the lexicographically last variant wins.
+        assert_eq!(first.canonical_command("GeT-iTeM"), Some("get-item"));
+    }
 
     #[test]
     fn lookup_is_case_insensitive() {

@@ -49,6 +49,9 @@ impl DiagnosticCode {
     }
 }
 
+/// How serious a diagnostic is. The derived `Ord` is meaningful and relied
+/// upon by callers filtering diagnostics: `Info < Warning < Error` — do not
+/// reorder the variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[non_exhaustive]
 pub enum Severity {
@@ -58,6 +61,19 @@ pub enum Severity {
     Warning,
     /// Formatting (or part of it) was not performed.
     Error,
+}
+
+impl Severity {
+    /// Short stable string form, e.g. for CLI/JSON output. Unlike the
+    /// `Debug` derive, this is a public contract.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Severity::Info => "info",
+            Severity::Warning => "warning",
+            Severity::Error => "error",
+        }
+    }
 }
 
 /// A diagnostic with both byte-span and line/column locations.

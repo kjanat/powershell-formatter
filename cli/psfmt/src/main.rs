@@ -32,7 +32,8 @@ With no files, reads stdin and writes formatted source to stdout.
 OPTIONS:
     -w, --write             Rewrite files in place (atomic)
         --check             Exit 1 if any input would be reformatted
-        --config <PATH>     JSON configuration (camelCase FormatOptions)
+        --config <PATH>     JSON configuration (camelCase FormatOptions);
+                            mutually exclusive with --preset
         --preset <NAME>     default | otbs | allman | stroustrup
         --catalog <PATH>    JSON command catalog for command/parameter casing
         --range <RANGE>     Format only startLine,startCol,endLine,endCol
@@ -166,6 +167,11 @@ fn parse_args() -> Result<Option<Cli>, CliError> {
         }
     }
 
+    // A full-struct config replaces every field, so combining it with a
+    // preset would silently discard the preset. Refuse rather than guess.
+    if preset.is_some() && config_path.is_some() {
+        return Err(usage_err("--preset and --config are mutually exclusive"));
+    }
     if let Some(name) = preset {
         cli.options = match name.as_str() {
             "default" | "stroustrup" => FormatOptions::stroustrup(),
@@ -246,32 +252,51 @@ fn run() -> Result<ExitCode, CliError> {
 
     let mut would_change = false;
     let mut any_skipped = false;
+    let mut any_io_error = false;
     for path in &cli.files {
-        let source = std::fs::read_to_string(path)
-            .map_err(|e| io_err(&format!("reading {}", path.display()), &e))?;
+        // A bad file must not abort the run: report it, keep formatting the
+        // rest, and surface exit code 3 at the end.
+        let source = match read_source(path) {
+            Ok(s) => s,
+            Err(message) => {
+                eprintln!("psfmt: {message}");
+                any_io_error = true;
+                continue;
+            }
+        };
         let result = run_format(&cli, &source);
         report_diagnostics(&path.display().to_string(), &result.diagnostics);
         if !result.formatted {
             any_skipped = true;
             continue;
         }
-        if result.text == source {
-            continue;
-        }
-        would_change = true;
         if cli.check {
-            eprintln!("{}: would be reformatted", path.display());
+            if result.text != source {
+                would_change = true;
+                eprintln!("{}: would be reformatted", path.display());
+            }
         } else if cli.write {
-            write_atomically(path, &result.text)
-                .map_err(|e| io_err(&format!("writing {}", path.display()), &e))?;
+            if result.text != source {
+                match write_atomically(path, &result.text) {
+                    Ok(()) => {}
+                    Err(e) => {
+                        eprintln!("psfmt: writing {}: {e}", path.display());
+                        any_io_error = true;
+                    }
+                }
+            }
         } else {
+            // Default mode is a filter: emit the (possibly unchanged)
+            // source, exactly like stdin mode does.
             io::stdout()
                 .write_all(result.text.as_bytes())
                 .map_err(|e| io_err("writing stdout", &e))?;
         }
     }
 
-    Ok(if any_skipped {
+    Ok(if any_io_error {
+        ExitCode::from(3)
+    } else if any_skipped {
         ExitCode::from(4)
     } else if cli.check && would_change {
         ExitCode::from(1)
@@ -280,23 +305,49 @@ fn run() -> Result<ExitCode, CliError> {
     })
 }
 
-/// Replace `path` with `contents` atomically (write temp + rename),
+/// Read a script as UTF-8, with a targeted message for the encoding
+/// Windows tooling most often produces instead.
+fn read_source(path: &Path) -> Result<String, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("reading {}: {e}", path.display()))?;
+    if bytes.starts_with(&[0xFF, 0xFE]) || bytes.starts_with(&[0xFE, 0xFF]) {
+        return Err(format!(
+            "reading {}: file is UTF-16 (byte-order mark found); psfmt reads UTF-8 — convert it first",
+            path.display()
+        ));
+    }
+    String::from_utf8(bytes).map_err(|e| {
+        format!(
+            "reading {}: stream did not contain valid UTF-8 ({e})",
+            path.display()
+        )
+    })
+}
+
+/// Replace `path` with `contents` atomically (write temp + fsync + rename),
 /// preserving the original permissions where practical.
 fn write_atomically(path: &Path, contents: &str) -> io::Result<()> {
+    // Resolve symlinks first: renaming over a symlink would replace the
+    // link itself with a regular file instead of updating its target.
+    let path = std::fs::canonicalize(path)?;
     let dir = path.parent().unwrap_or_else(|| Path::new("."));
     let file_name = path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "psfmt".to_owned());
     let tmp = dir.join(format!(".{file_name}.psfmt-{}", std::process::id()));
-    let metadata = std::fs::metadata(path).ok();
+    let metadata = std::fs::metadata(&path).ok();
 
     let outcome = (|| -> io::Result<()> {
-        std::fs::write(&tmp, contents)?;
+        let mut file = std::fs::File::create(&tmp)?;
+        file.write_all(contents.as_bytes())?;
+        // Rename gives atomic visibility, not durability: without the fsync
+        // a power cut after the rename can leave an empty file behind.
+        file.sync_all()?;
+        drop(file);
         if let Some(meta) = &metadata {
             let _ = std::fs::set_permissions(&tmp, meta.permissions());
         }
-        std::fs::rename(&tmp, path)
+        std::fs::rename(&tmp, &path)
     })();
     if outcome.is_err() {
         let _ = std::fs::remove_file(&tmp);

@@ -40,7 +40,7 @@ $profiles = [ordered]@{
             PSUseCorrectCasing = @{ Enable = $true }
         }
     }
-    'indent2-tabs-none' = @{
+    'tabs-noindent' = @{
         IncludeRules = @('PSPlaceOpenBrace', 'PSPlaceCloseBrace', 'PSUseConsistentWhitespace', 'PSUseConsistentIndentation', 'PSAlignAssignmentStatement', 'PSUseCorrectCasing')
         Rules = @{
             PSPlaceOpenBrace = @{ Enable = $true; OnSameLine = $true; NewLineAfter = $true; IgnoreOneLineBlock = $true }

@@ -163,10 +163,13 @@ impl Keyword {
             ("while", Keyword::While),
             ("workflow", Keyword::Workflow),
         ];
-        if word.len() > 13 || !word.is_ascii() {
+        /// Length of the longest entry in `TABLE` (`configuration`).
+        const MAX_LEN: usize = 13;
+        debug_assert!(TABLE.iter().all(|(name, _)| name.len() <= MAX_LEN));
+        if word.len() > MAX_LEN || !word.is_ascii() {
             return None;
         }
-        let mut buf = [0u8; 13];
+        let mut buf = [0u8; MAX_LEN];
         let lower = &mut buf[..word.len()];
         lower.copy_from_slice(word.as_bytes());
         lower.make_ascii_lowercase();

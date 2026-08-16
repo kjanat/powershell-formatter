@@ -71,7 +71,7 @@ proptest! {
     /// Arbitrary (valid UTF-8) input never panics the scanner, and the
     /// token stream is lossless.
     #[test]
-    fn tokenize_never_panics_and_is_lossless(src in ".{0,400}") {
+    fn tokenize_never_panics_and_is_lossless(src in "(?s).{0,400}") {
         let out = tokenize(&src);
         let mut prev = 0;
         for t in &out.tokens {
@@ -84,7 +84,7 @@ proptest! {
     /// Arbitrary input never panics the formatter; successful formatting is
     /// deterministic and idempotent.
     #[test]
-    fn format_never_panics_and_is_idempotent(src in ".{0,300}") {
+    fn format_never_panics_and_is_idempotent(src in "(?s).{0,300}") {
         let opts = FormatOptions::default();
         let once = format(&src, &opts);
         let again = format(&src, &opts);

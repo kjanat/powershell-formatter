@@ -12,8 +12,6 @@ use std::path::PathBuf;
 
 #[derive(Deserialize)]
 struct Fixture {
-    #[allow(dead_code)]
-    pwsh: String,
     file: String,
     errors: u32,
     tokens: Vec<OracleToken>,

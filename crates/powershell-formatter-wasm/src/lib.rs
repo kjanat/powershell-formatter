@@ -27,8 +27,11 @@ struct JsFormatResult {
     diagnostics: Vec<JsDiagnostic>,
 }
 
-#[derive(Deserialize, Default)]
-#[serde(rename_all = "camelCase", default)]
+// All four fields are required and unknown keys are rejected: `FormatRange`
+// coordinates are 1-based, so a defaulted-to-zero field from a missing or
+// misspelled key would be an invalid range accepted silently.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct JsRange {
     start_line: u32,
     start_column: u32,
@@ -46,7 +49,7 @@ fn convert(result: powershell_formatter::FormatResult) -> JsFormatResult {
             .map(|d| JsDiagnostic {
                 message: d.message,
                 code: d.code.as_str().to_owned(),
-                severity: format!("{:?}", d.severity).to_lowercase(),
+                severity: d.severity.as_str().to_owned(),
                 line: d.position.line,
                 column: d.position.column,
                 start: u32::try_from(d.span.start).unwrap_or(u32::MAX),

@@ -10,7 +10,7 @@ PowerShell installed.
 `dump-tokens.ps1` parses an input with
 `[System.Management.Automation.Language.Parser]::ParseInput` and emits a
 normalized `(category, text)` token stream as JSON. The Rust side
-(`crates/powershell-parser/tests/oracle.rs`) applies the same normalization
+([`crates/powershell-parser/tests/oracle.rs`](../crates/powershell-parser/tests/oracle.rs)) applies the same normalization
 to our lexer's output and requires the sequences to match exactly — which
 pins token boundaries and classifications simultaneously without comparing
 offsets across UTF-8/UTF-16 conventions.
@@ -21,7 +21,7 @@ Normalization deliberately blurs distinctions the formatter does not need:
 skipped; `--%` maps to `word` (PowerShell lexes it as a Generic token).
 
 - Regenerate: `pwsh -NoProfile -File tests/powershell-oracle/generate.ps1`
-- Pinned version: `tests/powershell-oracle/fixtures/VERSION`
+- Pinned version: [`tests/powershell-oracle/fixtures/VERSION`](../tests/powershell-oracle/fixtures/VERSION)
 - Inputs: hand-written coverage files (strings, numbers, commands, syntax,
   edge cases, ternaries, CRLF) plus upstream PowerShell parser test files
   (MIT; provenance in the file names).
@@ -39,7 +39,7 @@ canonical command/parameter casing for the commands the fixtures use from
 the *same* pwsh session, so our catalog-driven command casing is tested
 against PSSA's runspace-driven casing.
 
-`crates/powershell-formatter/tests/pssa_parity.rs` maps each profile to
+[`crates/powershell-formatter/tests/pssa_parity.rs`](../crates/powershell-formatter/tests/pssa_parity.rs) maps each profile to
 `FormatOptions`, formats each input, and requires byte equality — plus that
 formatting the oracle's own output is a no-op (idempotence against the
 oracle, not against ourselves).
@@ -47,7 +47,7 @@ oracle, not against ourselves).
 Expected outputs are never generated with our formatter.
 
 - Regenerate: `pwsh -NoProfile -File tests/pssa-parity/generate.ps1`
-- Pinned version: `tests/pssa-parity/expected/VERSION` (PSScriptAnalyzer)
+- Pinned version: [`tests/pssa-parity/expected/VERSION`](../tests/pssa-parity/expected/VERSION) (PSScriptAnalyzer)
 
 ## CI
 

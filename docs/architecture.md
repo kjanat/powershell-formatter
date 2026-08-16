@@ -28,7 +28,7 @@ parts — generic-token rescan fallbacks, number-termination rules per mode,
 `$( )` paren counting inside strings, `--%` verbatim arguments, signed
 numbers, ternary interactions with variable name characters — were encoded
 from PowerShell's own `tokenizer.cs`/`CharTraits.cs` semantics and are
-pinned by differential fixtures in `tests/powershell-oracle` (see
+pinned by differential fixtures in [`tests/powershell-oracle`](../tests/powershell-oracle) (see
 [oracles.md](oracles.md)).
 
 The structural pass never re-lexes. In one linear walk it produces a shallow
@@ -57,7 +57,9 @@ formatted source
 Phases run in PSScriptAnalyzer's rule order — close brace, open brace,
 whitespace, width-aware reflow, indentation, alignment, casing — each
 reading the layout state left by its predecessors. That reproduces
-`Invoke-Formatter`'s parse→fix fixpoint without any reparsing.
+`Invoke-Formatter`'s parse→fix fixpoint without reparsing *within a pass*;
+the verification steps below may re-scan the rendered output afterwards,
+and in rare cases trigger one more whole-file pass.
 
 Comments and blank lines live inside gaps and are preserved by the renderer;
 strings, here-strings, and `--%` arguments are opaque single tokens and are
@@ -86,11 +88,11 @@ diagnostics.
 
 ## Adapters
 
-- `cli/psfmt` — argument parsing, file I/O (atomic `--write`), exit codes.
-- `crates/dprint-plugin-powershell` — dprint Wasm ABI + config resolution.
+- [`cli/psfmt`](../cli/psfmt) — argument parsing, file I/O (atomic `--write`), exit codes.
+- [`crates/dprint-plugin-powershell`](../crates/dprint-plugin-powershell) — dprint Wasm ABI + config resolution.
   Known config keys are derived from `FormatOptions`' own serde surface, so
   the plugin cannot drift from the core.
-- `crates/powershell-formatter-wasm` + `packages/formatter` — wasm-bindgen
+- [`crates/powershell-formatter-wasm`](../crates/powershell-formatter-wasm) + [`packages/formatter`](../packages/formatter) — wasm-bindgen
   boundary and the npm package (browser + Node entries).
 
 Adapters contain no formatting policy.

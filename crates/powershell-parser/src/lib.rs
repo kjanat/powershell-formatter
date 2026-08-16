@@ -74,15 +74,16 @@ mod tests {
 
     #[test]
     fn keywords_only_in_command_position() {
-        let out = tokenize("if ($true) { }\nWrite-Output if");
+        let src = "if ($true) { }\nWrite-Output if";
+        let out = tokenize(src);
         let toks: Vec<(TokenKind, &str)> = out
             .tokens
             .iter()
             .filter(|t| !t.kind.is_trivia())
-            .map(|t| (t.kind, t.text("if ($true) { }\nWrite-Output if")))
+            .map(|t| (t.kind, t.text(src)))
             .collect();
         assert_eq!(toks[0].0, TokenKind::Keyword(Keyword::If));
         // Final `if` is a command argument, not a keyword.
-        assert_eq!(toks.last().unwrap().0, TokenKind::Generic);
+        assert_eq!(*toks.last().unwrap(), (TokenKind::Generic, "if"));
     }
 }

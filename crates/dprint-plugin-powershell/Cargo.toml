@@ -6,6 +6,7 @@ rust-version.workspace = true
 description            = "dprint Wasm plugin that formats PowerShell"
 repository.workspace   = true
 license.workspace      = true
+# Not a library: ships as plugin.wasm on GitHub releases.
 publish                = false
 
 [lib]
@@ -17,12 +18,12 @@ path              = "src/bin/generate_schema.rs"
 required-features = ["schema"]
 
 [dependencies]
-dprint-core          = { version = "0.68", features = ["wasm"] }
-json-schema-sort     = { version = "0.1", default-features = false, optional = true }
-powershell-formatter = { path = "../powershell-formatter" }
-schemars             = { version = "1", optional = true }
-serde                = { version = "1", features = ["derive"] }
-serde_json           = "1"
+dprint-core.workspace          = true
+json-schema-sort               = { workspace = true, optional = true }
+powershell-formatter.workspace = true
+schemars                       = { workspace = true, optional = true }
+serde.workspace                = true
+serde_json.workspace           = true
 
 [features]
 schema = ["dep:json-schema-sort", "dep:schemars", "powershell-formatter/schema"]

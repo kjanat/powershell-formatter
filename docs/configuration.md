@@ -11,11 +11,11 @@ surface:
   derived from the serde surface of `FormatOptions` at runtime, so the
   plugin cannot accept keys the core does not have; unknown keys and
   invalid values produce configuration diagnostics.
-- **JSON Schema**: `crates/dprint-plugin-powershell/deployment/schema.json`,
+- **JSON Schema**: [`crates/dprint-plugin-powershell/deployment/schema.json`](../crates/dprint-plugin-powershell/deployment/schema.json),
   generated from the same type via `schemars`
   (`cargo run -p dprint-plugin-powershell --features schema --bin generate-schema`);
   CI fails if it drifts.
-- **JS/TS**: `packages/formatter` accepts the same camelCase object; its
+- **JS/TS**: [`packages/formatter`](../packages/formatter) accepts the same camelCase object; its
   `index.d.ts` is validated in the package tests against the keys the wasm
   actually exposes (`defaultOptions()`).
 
@@ -62,7 +62,7 @@ Defaults reproduce PSScriptAnalyzer's `CodeFormatting` preset.
 Canonical casing is taken from the spellings used. Load with
 `psfmt --catalog file.json`, `JsonCatalog::from_json` in Rust, or the
 `catalog` argument of the JS `format()`. A catalog can be dumped from any
-PowerShell session — see `tests/pssa-parity/generate-catalog.ps1`.
+PowerShell session — see [`tests/pssa-parity/generate-catalog.ps1`](../tests/pssa-parity/generate-catalog.ps1).
 
 ## PSScriptAnalyzer `.psd1` settings files
 

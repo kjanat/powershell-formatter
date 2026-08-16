@@ -85,16 +85,21 @@ Alignment manages the gap before `=`; nothing manages the gap after it.
 
 ## 6. Range formatting drops corrections as text shifts
 
-`Invoke-Formatter -ScriptDefinition "if(` $a){'x'}`nif(`$b){'y'}" -Range @(2,1,2,12)`returns`if ($b) { 'y'}`— the space before`}` is never added because
-earlier fixes on the line grew it past the (fixed) range end, and the
-filter re-runs each iteration against shifted coordinates. **We diverge**
-(apply all corrections whose original extent is inside the range).
+```powershell
+Invoke-Formatter -ScriptDefinition "if(`$a){'x'}`nif(`$b){'y'}" -Range @(2,1,2,12)
+```
+
+returns `if ($b) { 'y'}` for line 2 — the space before `}` is never added
+because earlier fixes on the line grew it past the (fixed) range end, and
+the filter re-runs each iteration against shifted coordinates. **We
+diverge** (apply all corrections whose original extent is inside the
+range).
 
 ## 7. Mixed newlines are a hard error
 
 `EditableText` requires perfectly uniform line endings and throws otherwise.
-**We diverge** (normalize the newlines the formatter owns to the dominant
-inter-token style).
+**We diverge** (normalize the newlines the formatter owns to the first
+inter-token style seen in the input, matching [`docs/formatting.md`](formatting.md)).
 
 ## 8. The documented `TokenFlags` operator mask does not match behavior
 

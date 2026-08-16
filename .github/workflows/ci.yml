@@ -1,8 +1,24 @@
 name: CI
 
+# Prose-only changes skip the full battery; keep both lists identical.
 on:
-  push: { branches: [master] }
-  pull_request: null
+  push:
+    branches: [master]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - LICENSE
+      - "**/LICENSE"
+      - .coderabbit.yaml
+      - .editorconfig
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - LICENSE
+      - "**/LICENSE"
+      - .coderabbit.yaml
+      - .editorconfig
 
 permissions: { contents: read }
 
@@ -18,6 +34,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
         with: { components: "clippy,rustfmt" }
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
@@ -30,6 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo run -p dprint-plugin-powershell --features schema --bin generate-schema
@@ -40,6 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-unknown-unknown }
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
@@ -84,6 +103,7 @@ jobs:
     env: { target: "${{ matrix.target }}", seconds: "${{ matrix.seconds }}" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with: { workspaces: ".\nfuzz" }
@@ -92,13 +112,15 @@ jobs:
         run: |
           mkdir -p "fuzz/corpus/${target}"
           for f in tests/corpus/files/*.ps1 tests/powershell-oracle/inputs/*.ps1; do
-            b="$(basename "${f}" .ps1)"
+            # Include the source directory in the seed name: both corpus
+            # directories contain overlapping basenames.
+            b="$(tr '/' '_' <<<"${f%.ps1}")"
             cp "${f}" "fuzz/corpus/${target}/${b}"
           done
       - name: Short fuzz pass
         run: |
           echo "Running fuzz target '${target}' for ${seconds} seconds"
-          echo "::group::%s${target}"
+          echo "::group::${target}"
           cargo +nightly fuzz run "${target}" -- "-max_total_time=${seconds}"
           echo "::endgroup::"
 
@@ -107,6 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Install the pinned PSScriptAnalyzer

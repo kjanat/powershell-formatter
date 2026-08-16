@@ -498,12 +498,9 @@ impl<'src> Lexer<'src> {
                 // wildcard/generic argument (`echo [int]` is one word) —
                 // unless it indexes an immediately preceding expression
                 // (`Should -Be $errors[$i]`).
+                // Glued (`[a-z]*.txt`) or standalone: both are generic
+                // arguments unless they index an adjacent primary.
                 if self.mode() == Mode::CommandArgs && !self.adjacent_primary() {
-                    if self.peek_at(1).is_some_and(|n| !force_start_new_token(n)) {
-                        self.scan_generic(start);
-                        return;
-                    }
-                    // Standalone `[` in arguments: still generic.
                     self.scan_generic(start);
                     return;
                 }
@@ -1226,12 +1223,10 @@ impl<'src> Lexer<'src> {
                     if let Some(kind) = classify_dash_word(word) {
                         self.pos = end;
                         self.emit(TokenKind::Operator(kind), start, TokenFlags::DASH_WORD);
+                        // Comparison operators put the RHS back into
+                        // pipeline-element position semantically, but
+                        // operand mode is the right lexing behavior.
                         self.set_mode(Mode::ExprOperand);
-                        if matches!(kind, OperatorKind::ComparisonWord) {
-                            // Comparison operators put the RHS back into
-                            // pipeline-element position semantically, but
-                            // operand mode is the right lexing behavior.
-                        }
                     } else {
                         // Not an operator: a parameter token (e.g. inside
                         // `param(...)` or malformed expressions).

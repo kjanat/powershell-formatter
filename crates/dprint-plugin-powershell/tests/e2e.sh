@@ -49,6 +49,9 @@ if [[ "${sample_content}" != "${expected_sample}" ]]; then
 fi
 
 casing_content="$(cat casing.ps1)"
+# The glued `}else {` is PSScriptAnalyzer's own output for this input —
+# Invoke-Formatter 1.25.0 produces exactly this across the relevant
+# presets, and the parity fixtures pin it.
 expected_casing="if (\$x -eq 1) { 'yes' }else { 'no' }"
 if [[ "${casing_content}" != "${expected_casing}" ]]; then
 	echo "FAIL: casing.ps1 not formatted as expected:" >&2
@@ -86,15 +89,22 @@ if [[ "${indent_content}" != "${expected_indent}" ]]; then
 	exit 1
 fi
 
-# 5. Unknown config keys surface as diagnostics.
+# 5. Unknown config keys surface as diagnostics. Keep indentWidth 2 so the
+# file itself is still correctly formatted: the failure must come from the
+# unknown key, not from an indentation mismatch.
 cat >dprint.json <<EOF
 {
-  "powershell": { "frobnicate": true },
+  "powershell": { "indentWidth": 2, "frobnicate": true },
   "plugins": ["./plugin.wasm"]
 }
 EOF
-if dprint check indent.ps1 >/dev/null 2>&1; then
+if output="$(dprint check indent.ps1 2>&1)"; then
 	echo "FAIL: unknown config key did not fail" >&2
+	exit 1
+fi
+if [[ "${output}" != *"frobnicate"* ]]; then
+	echo "FAIL: failure was not caused by the unknown config key:" >&2
+	printf '%s\n' "${output}" >&2
 	exit 1
 fi
 

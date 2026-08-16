@@ -79,11 +79,13 @@ $stream = foreach ($t in $tokens) {
     }
 }
 
+# No per-file pwsh stamp: the generating version lives in fixtures/VERSION
+# alone, so fixture content stays byte-identical across runner patch
+# releases and the CI drift check compares tokens, not metadata.
 $result = [pscustomobject]@{
-    pwsh    = $PSVersionTable.PSVersion.ToString()
-    file    = [System.IO.Path]::GetFileName($Path)
-    errors  = @($errors).Count
-    tokens  = @($stream)
+    file   = [System.IO.Path]::GetFileName($Path)
+    errors = @($errors).Count
+    tokens = @($stream)
 }
 
 $json = $result | ConvertTo-Json -Depth 5 -Compress

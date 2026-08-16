@@ -116,6 +116,14 @@ test('re-initializing with a different wasm source is reported', async () => {
 	assert.equal((await format('$x=1')).text, '$x = 1');
 });
 
+test('an incomplete range is rejected, not silently zeroed', async () => {
+	// Missing endLine/endColumn used to default to 0 — an invalid 1-based
+	// coordinate — and format the wrong region.
+	await assert.rejects(() =>
+		formatRange('if($x){1}', { startLine: 1, startColumn: 1 }),
+	);
+});
+
 test('both entry points refuse a conflicting re-initialization', () => {
 	for (const entry of ['../index.js', '../index.node.js']) {
 		const src = readFileSync(new URL(entry, import.meta.url), 'utf8');

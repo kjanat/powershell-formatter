@@ -109,7 +109,14 @@ pub(crate) fn place_open_braces(engine: &mut Engine<'_>) {
                         .filter(|t| t.kind.is_comment())
                         .map(|t| t.text(engine.src).to_owned())
                         .collect();
-                        if comments.len() == 1 {
+                        // Relocating is only safe when the gap after the
+                        // brace ends the line — otherwise the line comment
+                        // would swallow the code after it (the preservation
+                        // check catches that, but as a silent format skip).
+                        if comments.len() == 1
+                            && (engine.opts.newline_after_open_brace
+                                || engine.gaps[pos + 1].breaks_line())
+                        {
                             engine.gaps[pos].line = LineState::Join { spaces: 1 };
                             engine.gaps[pos].has_comment = false;
                             let taken = comments.into_iter().next();

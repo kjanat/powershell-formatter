@@ -232,10 +232,13 @@ fn apply_final_newline(text: &mut String, options: &FormatOptions, newline: &str
     match options.final_newline {
         None => {}
         Some(true) => {
+            let had_content = !text.is_empty();
             while text.ends_with('\n') || text.ends_with('\r') {
                 text.pop();
             }
-            if !text.is_empty() {
+            // `had_content`, not the post-trim check: a newline-only file
+            // must normalize to one final newline, not be emptied.
+            if !text.is_empty() || had_content {
                 text.push_str(newline);
             }
         }
@@ -376,5 +379,41 @@ mod tests {
         // corrections that drift past the range as earlier edits grow the
         // line — see docs/formatting.md.)
         assert_eq!(out, "if($a){'x'}\nif ($b) { 'y' }");
+    }
+
+    /// `finalNewline: true` on a whitespace-only file must normalize it to
+    /// one newline, not empty it (regression: the post-trim emptiness check
+    /// used to suppress the push).
+    #[test]
+    fn final_newline_keeps_whitespace_only_files() {
+        let opts = FormatOptions {
+            final_newline: Some(true),
+            ..FormatOptions::default()
+        };
+        // The single kept newline uses the input's detected style.
+        for (src, expected) in [("\n", "\n"), ("\r\n", "\r\n"), ("\n\n\n", "\n")] {
+            let result = format(src, &opts);
+            assert!(result.formatted, "src {src:?}");
+            assert_eq!(result.text, expected, "src {src:?}");
+        }
+        assert_eq!(format("", &opts).text, "");
+    }
+
+    /// With `newlineAfterOpenBrace: false`, relocating a comment past the
+    /// `{` would let the line comment swallow the code that stays on the
+    /// same line; the brace must stay put instead of tripping the
+    /// preservation check into a silent skip.
+    #[test]
+    fn brace_comment_relocation_respects_same_line_content() {
+        let opts = FormatOptions {
+            newline_after_open_brace: false,
+            ignore_one_line_block: false,
+            ..FormatOptions::default()
+        };
+        let src = "if ($x) # note\n{ 1 }";
+        let result = format(src, &opts);
+        assert!(result.formatted, "must format, not preservation-skip");
+        let twice = format(&result.text, &opts);
+        assert_eq!(result.text, twice.text);
     }
 }

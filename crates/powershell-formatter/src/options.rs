@@ -67,9 +67,12 @@ pub enum EndOfLine {
     Crlf,
 }
 
-/// The complete formatting configuration.
+/// Every knob the PowerShell formatter has: brace placement, indentation,
+/// whitespace, alignment, casing, line endings, and width-aware reflow.
 ///
-/// Defaults reproduce PSScriptAnalyzer's `CodeFormatting` preset.
+/// Out of the box, formatting reproduces PSScriptAnalyzer's
+/// `Invoke-Formatter` with the stock `CodeFormatting` settings, byte for
+/// byte; change any field independently to diverge from it deliberately.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]

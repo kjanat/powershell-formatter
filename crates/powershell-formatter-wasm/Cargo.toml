@@ -6,16 +6,17 @@ rust-version.workspace = true
 description            = "wasm-bindgen bindings for powershell-formatter (browser/Node package)"
 repository.workspace   = true
 license.workspace      = true
+# Not a library: ships as the wasm inside packages/formatter on npm.
 publish                = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-powershell-formatter = { path = "../powershell-formatter" }
-serde                = { version = "1", features = ["derive"] }
-serde-wasm-bindgen   = "0.6"
-wasm-bindgen         = "=0.2.127"
+powershell-formatter.workspace = true
+serde.workspace                = true
+serde-wasm-bindgen.workspace   = true
+wasm-bindgen.workspace         = true
 
 [lints]
 workspace = true

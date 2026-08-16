@@ -79,7 +79,7 @@
     }
   },
   "title": "PowerShell formatter configuration",
-  "description": "The complete formatting configuration.\n\nDefaults reproduce PSScriptAnalyzer's `CodeFormatting` preset.",
+  "description": "Every knob the PowerShell formatter has: brace placement, indentation,\nwhitespace, alignment, casing, line endings, and width-aware reflow.\n\nOut of the box, formatting reproduces PSScriptAnalyzer's\n`Invoke-Formatter` with the stock `CodeFormatting` settings, byte for\nbyte; change any field independently to diverge from it deliberately.",
   "type": "object",
   "properties": {
     "alignAssignment": {

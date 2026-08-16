@@ -5,21 +5,21 @@ edition.workspace      = true
 rust-version.workspace = true
 repository.workspace   = true
 license.workspace      = true
-publish                = false
+description            = "Standalone PowerShell formatter reproducing PSScriptAnalyzer's Invoke-Formatter"
 
 [[bench]]
 harness = false
 name    = "formatting"
 
 [dependencies]
-powershell-parser = { path = "../powershell-parser" }
-schemars          = { version = "1", optional = true }
+powershell-parser.workspace = true
+schemars                    = { workspace = true, optional = true }
 serde             = { version = "1", features = ["derive"], optional = true }
 serde_json        = { version = "1", optional = true }
 
 [dev-dependencies]
-divan    = "0.1"
-proptest = "1"
+divan.workspace    = true
+proptest.workspace = true
 
 [features]
 default = ["serde"]

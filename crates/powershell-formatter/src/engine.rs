@@ -369,16 +369,16 @@ impl<'s> Engine<'s> {
     }
 
     fn gap_in_range(&self, pos: usize, range: &Span) -> bool {
-        let start = self.gaps[pos]
-            .trivia
-            .clone()
-            .next()
-            .map_or_else(|| self.gap_anchor(pos), |t| self.parse.tokens[t].span.start);
-        let end = self.gaps[pos]
-            .trivia
-            .clone()
-            .last()
-            .map_or_else(|| self.gap_anchor(pos), |t| self.parse.tokens[t].span.end);
+        let trivia = &self.gaps[pos].trivia;
+        let (start, end) = if trivia.is_empty() {
+            let anchor = self.gap_anchor(pos);
+            (anchor, anchor)
+        } else {
+            (
+                self.parse.tokens[trivia.start].span.start,
+                self.parse.tokens[trivia.end - 1].span.end,
+            )
+        };
         range.overlaps(&Span::new(start, end))
     }
 

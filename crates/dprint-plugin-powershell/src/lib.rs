@@ -130,18 +130,26 @@ impl SyncPluginHandler<Configuration> for PowerShellPluginHandler {
             version: env!("CARGO_PKG_VERSION").to_string(),
             config_key: "powershell".to_string(),
             help_url: env!("CARGO_PKG_REPOSITORY").to_string(),
+            // The plugins.dprint.dev proxy only serves repositories named
+            // dprint-plugin-<name>; this plugin lives in a monorepo, so its
+            // schema and update metadata are plain GitHub release assets
+            // (tags are bare semver, so the tag equals the crate version).
             config_schema_url: format!(
-                "https://plugins.dprint.dev/kjanat/powershell/{}/schema.json",
+                "{}/releases/download/{}/schema.json",
+                env!("CARGO_PKG_REPOSITORY"),
                 env!("CARGO_PKG_VERSION")
             ),
-            update_url: Some(
-                "https://plugins.dprint.dev/kjanat/powershell/latest.json".to_string(),
-            ),
+            update_url: Some(format!(
+                "{}/releases/latest/download/latest.json",
+                env!("CARGO_PKG_REPOSITORY")
+            )),
         }
     }
 
     fn license_text(&mut self) -> String {
-        include_str!("../../../LICENSE").to_string()
+        // Crate-local copy: a path outside the package root would build in
+        // the workspace but break `cargo package`/publish.
+        include_str!("../LICENSE").to_string()
     }
 
     fn resolve_config(
@@ -169,9 +177,10 @@ impl SyncPluginHandler<Configuration> for PowerShellPluginHandler {
 
         let result = powershell_formatter::format(source, request.config);
         if !result.formatted {
-            // Preserved-input outcome: report the first diagnostic instead
-            // of silently claiming success.
-            if let Some(d) = result.diagnostics.first() {
+            // Preserved-input outcome: the formatter appends the diagnostic
+            // explaining the skip *after* any parse diagnostics, so report
+            // the last one — the first may be an unrelated lex note.
+            if let Some(d) = result.diagnostics.last() {
                 return Err(FormatError::new(format!(
                     "{}:{}:{} {} [{}]",
                     request.file_path.display(),

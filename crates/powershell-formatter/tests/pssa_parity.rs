@@ -53,7 +53,7 @@ fn profile_options(profile: &str) -> FormatOptions {
             ignore_one_line_block: false,
             ..FormatOptions::default()
         },
-        "indent2-tabs-none" => FormatOptions {
+        "tabs-noindent" => FormatOptions {
             use_tabs: true,
             pipeline_indentation: PipelineIndentation::NoIndentation,
             ..FormatOptions::default()
@@ -158,13 +158,13 @@ parity! {
     compact_expand: "compact" / "expand-oneline",
     hashtables_default: "hashtables" / "default",
     hashtables_allman: "hashtables" / "allman",
-    hashtables_tabs: "hashtables" / "indent2-tabs-none",
+    hashtables_tabs: "hashtables" / "tabs-noindent",
     whitespace_default: "whitespace" / "default",
     whitespace_redundant: "whitespace" / "pipe-redundant",
     pipelines_default: "pipelines" / "default",
     pipelines_every: "pipelines" / "pipeline-every",
     pipelines_none: "pipelines" / "pipeline-none",
-    pipelines_noindent: "pipelines" / "indent2-tabs-none",
+    pipelines_noindent: "pipelines" / "tabs-noindent",
     comments_default: "comments" / "default",
     comments_otbs: "comments" / "otbs",
     comments_allman: "comments" / "allman",
@@ -173,5 +173,5 @@ parity! {
     casing_expand: "casing" / "expand-oneline",
     nested_default: "nested" / "default",
     nested_allman: "nested" / "allman",
-    nested_tabs: "nested" / "indent2-tabs-none",
+    nested_tabs: "nested" / "tabs-noindent",
 }
