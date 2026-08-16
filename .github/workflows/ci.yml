@@ -70,31 +70,36 @@ jobs:
           done
 
   fuzz-smoke:
-    name: fuzz smoke
+    name: fuzz smoke (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include: [
+          { target: lexer, seconds: 30 },
+          { target: parser, seconds: 30 },
+          { target: formatter, seconds: 60 },
+        ]
     runs-on: ubuntu-latest
+    env: { target: "${{ matrix.target }}", seconds: "${{ matrix.seconds }}" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-        with:
-          workspaces: |
-            .
-            fuzz
+        with: { workspaces: ".\nfuzz" }
       - run: cargo install cargo-fuzz --locked
       - name: Seed fuzz corpus from the real-world corpus
         run: |
-          mkdir -p fuzz/corpus/lexer fuzz/corpus/parser fuzz/corpus/formatter
+          mkdir -p "fuzz/corpus/${target}"
           for f in tests/corpus/files/*.ps1 tests/powershell-oracle/inputs/*.ps1; do
             b="$(basename "${f}" .ps1)"
-            cp "${f}" "fuzz/corpus/lexer/${b}"
-            cp "${f}" "fuzz/corpus/parser/${b}"
-            cp "${f}" "fuzz/corpus/formatter/${b}"
+            cp "${f}" "fuzz/corpus/${target}/${b}"
           done
-      - name: Short fuzz pass on every target
+      - name: Short fuzz pass
         run: |
-          cargo +nightly fuzz run lexer     -- -max_total_time=30
-          cargo +nightly fuzz run parser    -- -max_total_time=30
-          cargo +nightly fuzz run formatter -- -max_total_time=60
+          echo "Running fuzz target '${target}' for ${seconds} seconds"
+          echo "::group::%s${target}"
+          cargo +nightly fuzz run "${target}" -- "-max_total_time=${seconds}"
+          echo "::endgroup::"
 
   powershell-oracles:
     name: PowerShell + PSScriptAnalyzer oracles
