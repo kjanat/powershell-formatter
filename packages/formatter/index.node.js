@@ -6,22 +6,32 @@ import { readFileSync } from 'node:fs';
 import * as bindings from './dist/powershell_formatter_wasm.js';
 
 let initialized = false;
+let initInput;
 
 function ensureInitialized(input) {
-	if (!initialized) {
-		const module = input === undefined
-			? readFileSync(
-				new URL('./dist/powershell_formatter_wasm_bg.wasm', import.meta.url),
-			)
-			: input;
-		bindings.initSync({ module });
-		initialized = true;
+	if (initialized) {
+		// Already instantiated; a different wasm source cannot be swapped in.
+		if (input !== undefined && input !== initInput) {
+			throw new Error(
+				'the formatter is already initialized from a different wasm source',
+			);
+		}
+		return;
 	}
+	const module = input === undefined
+		? readFileSync(
+			new URL('./dist/powershell_formatter_wasm_bg.wasm', import.meta.url),
+		)
+		: input;
+	// `initialized` is only set after initSync returns, so a failed load
+	// leaves the module retryable rather than permanently broken.
+	bindings.initSync({ module });
+	initInput = input;
+	initialized = true;
 }
 
-export function initialize(input) {
+export async function initialize(input) {
 	ensureInitialized(input);
-	return Promise.resolve();
 }
 
 export async function format(source, options, catalog) {

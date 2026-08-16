@@ -175,6 +175,19 @@ fn reflow_never_breaks_before_a_pulled_up_operator() {
     assert_eq!(once.text, twice.text, "src: {src:?}");
 }
 
+/// Deeply nested delimiters used to abort the process with a stack overflow
+/// inside the structural parser, taking down `psfmt`, the dprint plugin and
+/// the Wasm package with it. Formatting must decline the input instead.
+#[test]
+fn deep_nesting_is_declined_not_fatal() {
+    for depth in [1_000usize, 100_000] {
+        let src = format!("{}1{}", "(".repeat(depth), ")".repeat(depth));
+        let result = format(&src, &FormatOptions::default());
+        assert!(!result.formatted, "depth {depth} should be declined");
+        assert_eq!(result.text, src, "declined input must be byte-identical");
+    }
+}
+
 /// Regression (found by `fragment_soup_is_stable`): a line-leading `=` lexes
 /// as an assignment operator, but once the whitespace phase pulls it onto
 /// the command line above, a re-format sees it as a command argument — a

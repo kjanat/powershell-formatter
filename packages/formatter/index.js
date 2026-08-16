@@ -5,13 +5,35 @@
 import initWasm, * as bindings from './dist/powershell_formatter_wasm.js';
 
 let initPromise;
+let initInput;
 
 export function initialize(input) {
-	if (!initPromise) {
-		initPromise = initWasm(
-			input === undefined ? undefined : { module_or_path: input },
-		).then(() => undefined);
+	if (initPromise) {
+		// A second call naming a different wasm source cannot be honored: the
+		// module is already instantiated. Say so instead of silently handing
+		// back an instance loaded from somewhere else.
+		if (input !== undefined && input !== initInput) {
+			return Promise.reject(
+				new Error(
+					'the formatter is already initialized from a different wasm source',
+				),
+			);
+		}
+		return initPromise;
 	}
+	initInput = input;
+	initPromise = initWasm(
+		input === undefined ? undefined : { module_or_path: input },
+	).then(
+		() => undefined,
+		(err) => {
+			// Never cache a failure: a transient fetch error would otherwise
+			// poison every later call with no way to retry.
+			initPromise = undefined;
+			initInput = undefined;
+			throw err;
+		},
+	);
 	return initPromise;
 }
 

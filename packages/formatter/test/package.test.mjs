@@ -103,3 +103,26 @@ test('browser entry point does not import node builtins', () => {
 	const browser = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
 	assert.ok(!browser.includes('node:'), 'browser entry must be node-free');
 });
+
+test('re-initializing with a different wasm source is reported', async () => {
+	// The default instance is already live by now; asking for a different one
+	// must fail loudly rather than silently keep serving the first.
+	await assert.rejects(
+		() => initialize(new Uint8Array([0x00, 0x61, 0x73, 0x6d])),
+		/already initialized from a different wasm source/,
+	);
+	// A repeat call with no argument still resolves against the live instance.
+	await initialize();
+	assert.equal((await format('$x=1')).text, '$x = 1');
+});
+
+test('both entry points refuse a conflicting re-initialization', () => {
+	for (const entry of ['../index.js', '../index.node.js']) {
+		const src = readFileSync(new URL(entry, import.meta.url), 'utf8');
+		assert.match(
+			src,
+			/already initialized from a different wasm source/,
+			`${entry} must reject a conflicting wasm source`,
+		);
+	}
+});

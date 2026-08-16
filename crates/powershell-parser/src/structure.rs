@@ -132,6 +132,18 @@ fn block_kind(open: TokenKind) -> BlockKind {
     }
 }
 
+/// Maximum delimiter nesting the structural parser will descend into.
+///
+/// `parse_into` recurses once per opening delimiter, so unbounded input
+/// depth would overflow the call stack — an abort, not a catchable panic.
+/// Measured thresholds: ~20k levels on a default 8 MiB thread stack, ~10k
+/// on Wasm's 4 MiB, and under 5k on a 1 MiB stack. PowerShell's own parser
+/// gives up well before any of those (`ScriptTooComplicated`, between 10k
+/// and 20k levels), and real scripts nest a couple of dozen deep at most,
+/// so this bound is generous while leaving orders of magnitude of headroom
+/// on the smallest stack we run on.
+const MAX_DEPTH: u32 = 256;
+
 struct Builder<'a> {
     source: &'a str,
     tokens: &'a [Token],
@@ -139,6 +151,7 @@ struct Builder<'a> {
     matches: Vec<Option<u32>>,
     incomplete: bool,
     line_index: Option<LineIndex>,
+    depth: u32,
 }
 
 impl<'a> Builder<'a> {
@@ -212,6 +225,27 @@ impl<'a> Builder<'a> {
             }
 
             if kind.is_open_delimiter() {
+                if self.depth >= MAX_DEPTH {
+                    // Too deep to descend safely. Consume the delimiter as an
+                    // ordinary token so the scan still advances and stays
+                    // lossless, and mark the parse incomplete — the formatter
+                    // preserves incomplete input byte-for-byte.
+                    if !self.incomplete {
+                        self.diag(
+                            DiagnosticCode::NestingTooDeep,
+                            "delimiters nested too deeply to analyze; formatting skipped",
+                            tok.span,
+                        );
+                    }
+                    self.incomplete = true;
+                    if stmt_first.is_none() {
+                        stmt_first = Some(i as u32);
+                    }
+                    stmt_last = i as u32;
+                    *pos += 1;
+                    prev_significant = Some(kind);
+                    continue;
+                }
                 let open_idx = i;
                 *pos += 1;
                 let mut child = Node {
@@ -221,7 +255,9 @@ impl<'a> Builder<'a> {
                     children: Vec::new(),
                     statements: Vec::new(),
                 };
+                self.depth += 1;
                 self.parse_into(&mut child, pos, end);
+                self.depth -= 1;
                 if let Some(close_idx) = child.close {
                     self.matches[open_idx] = Some(close_idx);
                     self.matches[close_idx as usize] = Some(open_idx as u32);
@@ -306,6 +342,7 @@ fn build(source: &str, tokens: Vec<Token>, diagnostics: Vec<Diagnostic>) -> Pars
         matches: vec![None; tokens.len()],
         incomplete: had_lex_errors,
         line_index: None,
+        depth: 0,
     };
     let mut root = Node {
         kind: NodeKind::Root,
@@ -380,5 +417,32 @@ mod tests {
             r.root.statements[0].kind,
             StatementKind::KeywordConstruct(Keyword::If)
         ));
+    }
+
+    #[test]
+    fn nesting_within_the_limit_still_parses() {
+        let depth = (MAX_DEPTH - 1) as usize;
+        let src = format!("{}1{}", "(".repeat(depth), ")".repeat(depth));
+        let r = parse(&src);
+        assert!(!r.is_incomplete, "depth {depth} should parse normally");
+    }
+
+    /// Deep nesting used to recurse until the call stack aborted the process
+    /// (measured: ~20k levels on 8 MiB, under 5k on a 1 MiB Wasm stack).
+    /// It must now degrade to an incomplete parse instead.
+    #[test]
+    fn nesting_past_the_limit_is_reported_not_fatal() {
+        for depth in [MAX_DEPTH as usize + 1, 50_000] {
+            for src in [
+                format!("{}1{}", "(".repeat(depth), ")".repeat(depth)),
+                "{".repeat(depth),
+                format!("{}1{}", "@(".repeat(depth), ")".repeat(depth)),
+            ] {
+                let r = parse(&src);
+                assert!(r.is_incomplete, "depth {depth} should be incomplete");
+                let spans: usize = r.tokens.iter().map(|t| t.span.end - t.span.start).sum();
+                assert_eq!(spans, src.len(), "scan stayed lossless at depth {depth}");
+            }
+        }
     }
 }

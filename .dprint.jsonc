@@ -36,6 +36,9 @@
 		"tests/powershell-oracle/fixtures/**",
 		"tests/pssa-parity/inputs/**",
 		"tests/pssa-parity/expected/**",
+		// Dumped from a live pwsh by generate-catalog.ps1; reformatting it
+		// here would make every regeneration show a whole-file diff.
+		"tests/pssa-parity/catalog.json",
 		"fuzz/corpus/**",
 		"packages/formatter/dist/**",
 	],

@@ -5,9 +5,17 @@
 # The pinned module version is recorded in expected/VERSION.
 #
 # Run: pwsh -NoProfile -File generate.ps1
+[CmdletBinding()]
+param(
+	# Parity expectations are defined against one exact analyzer build, and
+	# rules change between releases: generating with a different version
+	# silently rewrites every expectation. Pin it, and record the pin in
+	# expected/VERSION so CI installs the same build.
+	[string]$RequiredVersion = '1.25.0'
+)
 Set-StrictMode -Version 3
 $ErrorActionPreference = 'Stop'
-Import-Module PSScriptAnalyzer
+Import-Module PSScriptAnalyzer -RequiredVersion $RequiredVersion
 
 $root = $PSScriptRoot
 $inputs = Join-Path $root 'inputs'
@@ -79,4 +87,8 @@ foreach ($file in Get-ChildItem $inputs -Filter *.ps1) {
     }
 }
 
-Set-Content -Path (Join-Path $expected 'VERSION') -Value (Get-Module PSScriptAnalyzer).Version.ToString()
+$loaded = (Get-Module PSScriptAnalyzer).Version.ToString()
+if ($loaded -ne $RequiredVersion) {
+	throw "expected PSScriptAnalyzer $RequiredVersion, loaded $loaded"
+}
+Set-Content -Path (Join-Path $expected 'VERSION') -Value $loaded

@@ -16,6 +16,9 @@ pub enum DiagnosticCode {
     UnbalancedCloseDelimiter,
     /// An opening delimiter was never closed.
     UnbalancedOpenDelimiter,
+    /// Delimiters nested deeper than the structural parser will descend.
+    /// PowerShell itself rejects such input as `ScriptTooComplicated`.
+    NestingTooDeep,
     /// A byte sequence could not be classified.
     UnrecognizedToken,
     /// Formatting was skipped because the input could not be analyzed safely.
@@ -37,6 +40,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnterminatedVariable => "unterminated-variable",
             DiagnosticCode::UnbalancedCloseDelimiter => "unbalanced-close-delimiter",
             DiagnosticCode::UnbalancedOpenDelimiter => "unbalanced-open-delimiter",
+            DiagnosticCode::NestingTooDeep => "nesting-too-deep",
             DiagnosticCode::UnrecognizedToken => "unrecognized-token",
             DiagnosticCode::FormattingSkipped => "formatting-skipped",
             DiagnosticCode::PreservationCheckFailed => "preservation-check-failed",
