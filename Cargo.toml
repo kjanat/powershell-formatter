@@ -1,37 +1,31 @@
 [workspace]
 resolver = "3"
-members = [
-    "cli/psfmt",
-    "crates/dprint-plugin-powershell",
-    "crates/powershell-formatter",
-    "crates/powershell-parser",
-    "crates/powershell-formatter-wasm",
-]
-exclude = ["fuzz"]
+members  = ["cli/psfmt", "crates/*"]
+exclude  = ["fuzz"]
 
 [workspace.package]
-version = "0.0.0"
-edition = "2024"
-rust-version = "1.85"
-license = "MIT"
-repository = "https://github.com/kjanat/powershell-formatter"
-authors = ["Kaj Kowalski"]
-
-[workspace.lints.rust]
-unsafe_code = "forbid"
+version      = "0.0.0"
+authors      = ["Kaj Kowalski"]
+edition      = "2024"
+rust-version = "1.97"
+repository   = "https://github.com/kjanat/powershell-formatter"
+license      = "MIT"
 
 [workspace.lints.clippy]
 all = "warn"
 
-# Size-optimized profile for Wasm artifacts: cold-load cost dominates a
-# dprint plugin, so trade compile time for a smaller binary.
-[profile.wasm-release]
-inherits = "release"
-opt-level = "z"
-strip = true
-lto = "fat"
-panic = "abort"
-codegen-units = 1
+[workspace.lints.rust]
+unsafe_code = "forbid"
 
 [profile.release]
 strip = true
+
+# Size-optimized profile for Wasm artifacts: cold-load cost dominates a
+# dprint plugin, so trade compile time for a smaller binary.
+[profile.wasm-release]
+inherits      = "release"
+opt-level     = "z"
+strip         = true
+lto           = "fat"
+panic         = "abort"
+codegen-units = 1
