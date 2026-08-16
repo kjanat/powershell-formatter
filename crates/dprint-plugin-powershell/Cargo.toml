@@ -19,12 +19,13 @@ required-features = ["schema"]
 [dependencies]
 dprint-core          = { version = "0.68", features = ["wasm"] }
 powershell-formatter = { path = "../powershell-formatter" }
+json-schema-sort     = { version = "0.1", optional = true, default-features = false }
 schemars             = { version = "1", optional = true }
 serde                = { version = "1", features = ["derive"] }
 serde_json           = "1"
 
 [features]
-schema = ["dep:schemars", "powershell-formatter/schema"]
+schema = ["dep:json-schema-sort", "dep:schemars", "powershell-formatter/schema"]
 
 [lints]
 workspace = true

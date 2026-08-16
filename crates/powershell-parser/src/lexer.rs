@@ -1111,10 +1111,11 @@ impl<'src> Lexer<'src> {
             }
             _ => {}
         }
-        if let (Some(a), Some(b)) = (bytes.get(i).map(|b| lower(*b)), bytes.get(i + 1)) {
-            if matches!(a, b'k' | b'm' | b'g' | b't' | b'p') && lower(*b) == b'b' {
-                i += 2;
-            }
+        if let (Some(a), Some(b)) = (bytes.get(i).map(|b| lower(*b)), bytes.get(i + 1))
+            && matches!(a, b'k' | b'm' | b'g' | b't' | b'p')
+            && lower(*b) == b'b'
+        {
+            i += 2;
         }
         if i > suffix_start {
             flags |= TokenFlags::NUMBER_SUFFIXED;
@@ -1903,10 +1904,10 @@ impl<'src> Lexer<'src> {
                 _ => self.pos += c.len_utf8(),
             }
         }
-        if self.pos == start {
-            if let Some(c) = self.peek() {
-                self.pos += c.len_utf8();
-            }
+        if self.pos == start
+            && let Some(c) = self.peek()
+        {
+            self.pos += c.len_utf8();
         }
         self.emit(TokenKind::Generic, start, TokenFlags::IN_COMMAND_ARGS);
     }

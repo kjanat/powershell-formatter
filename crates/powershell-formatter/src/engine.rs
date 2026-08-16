@@ -149,10 +149,10 @@ impl<'s> Engine<'s> {
             let kind = parse.tokens[ti].kind;
             if kind.is_close_delimiter() {
                 // The closer belongs to the frame it closes.
-                if let Some(&top) = stack.last() {
-                    if sig_match[top] == Some(pos) {
-                        stack.pop();
-                    }
+                if let Some(&top) = stack.last()
+                    && sig_match[top] == Some(pos)
+                {
+                    stack.pop();
                 }
                 enclosing[pos] = stack.last().copied();
                 continue;

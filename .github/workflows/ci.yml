@@ -47,7 +47,7 @@ jobs:
       - uses: kjanat/install-dprint@v2
       - uses: cargo-bins/cargo-binstall@main
       - name: Install tools
-        run: cargo bininstall wasm-bindgen-cli --version 0.2.127 --locked
+        run: cargo binstall --no-confirm wasm-bindgen-cli --version 0.2.127 --locked
       - name: dprint plugin end-to-end
         run: crates/dprint-plugin-powershell/tests/e2e.sh
       - name: Build and test the npm package

@@ -134,6 +134,7 @@ name = "dprint-plugin-powershell"
 version = "0.0.0"
 dependencies = [
  "dprint-core",
+ "json-schema-sort",
  "powershell-formatter",
  "schemars",
  "serde",
@@ -271,6 +272,15 @@ dependencies = [
  "cfg-if",
  "futures-util",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "json-schema-sort"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0064742d7d654ade52f6a62cf9fed7a9bfe2434b96319d31ebbb60d54267f35"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

@@ -209,14 +209,15 @@ fn find_pipelines(engine: &Engine<'_>) -> Vec<Pipeline> {
     }];
 
     let end_pipeline = |frame: &mut Frame, end: usize, out: &mut Vec<Pipeline>| {
-        if let Some(start) = frame.pipeline_start.take() {
-            if frame.pipes > 0 && end >= start {
-                out.push(Pipeline {
-                    start,
-                    end,
-                    increments: 0,
-                });
-            }
+        if let Some(start) = frame.pipeline_start.take()
+            && frame.pipes > 0
+            && end >= start
+        {
+            out.push(Pipeline {
+                start,
+                end,
+                increments: 0,
+            });
         }
         frame.pipes = 0;
     };
