@@ -9,4 +9,3 @@ coverage/
 /fuzz/artifacts/
 /fuzz/corpus/
 /fuzz/coverage/
-/fuzz/Cargo.lock
