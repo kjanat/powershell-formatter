@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 /// Where opening braces of statement blocks go.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum BraceStyle {
     /// `if ($x) {` — brace on the same line (K&R / OTBS / Stroustrup).
@@ -23,6 +24,7 @@ pub enum BraceStyle {
 /// Whether `else`/`elseif`/`catch`/`finally` cuddle onto the closing brace.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum BranchKeywordPlacement {
     /// `}` then `else {` on the next line (Stroustrup — PSSA default).
@@ -36,6 +38,7 @@ pub enum BranchKeywordPlacement {
 /// `PipelineIndentation`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum PipelineIndentation {
     /// Indent once at the first line-ending pipe of a pipeline.
@@ -52,6 +55,7 @@ pub enum PipelineIndentation {
 /// Line-ending handling for output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum EndOfLine {
     /// Keep the input's detected dominant newline style (PSSA behavior).
@@ -68,6 +72,7 @@ pub enum EndOfLine {
 /// Defaults reproduce PSScriptAnalyzer's `CodeFormatting` preset.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase", default))]
 pub struct FormatOptions {
     /// Spaces per indentation level (ignored when `use_tabs`).

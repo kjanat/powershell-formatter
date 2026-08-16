@@ -163,7 +163,7 @@ impl<'s> Engine<'s> {
             }
         }
 
-        let newline = detect_newline(src, opts);
+        let newline = detect_newline(src, parse, opts);
         let respell = vec![None; sig.len()];
         Self {
             src,
@@ -423,6 +423,22 @@ impl<'s> Engine<'s> {
                     self.render_join_comments(gap, out, 0);
                     return;
                 }
+                if pos == 0 && gap.indent.is_some() {
+                    // Leading trivia of the first line: a BOM survives, the
+                    // whitespace is rewritten to the decided indentation.
+                    for t in &self.parse.tokens[gap.trivia.clone()] {
+                        if t.text(self.src).contains('\u{FEFF}') {
+                            out.push('\u{FEFF}');
+                        }
+                        if t.kind.is_comment() {
+                            out.push_str(t.text(self.src));
+                        }
+                    }
+                    if let Some(level) = gap.indent {
+                        out.push_str(&self.indent_text(level));
+                    }
+                    return;
+                }
                 for t in &self.parse.tokens[gap.trivia.clone()] {
                     out.push_str(t.text(self.src));
                 }
@@ -564,23 +580,34 @@ impl<'s> Engine<'s> {
 }
 
 /// Detect the output newline from options and source content.
-fn detect_newline(src: &str, opts: &FormatOptions) -> &'static str {
+///
+/// Auto mode inspects the first newline *between* tokens — newlines inside
+/// here-strings and multi-line strings are protected content the formatter
+/// never rewrites, so they must not steer detection (that would make mixed
+/// files non-idempotent). PSScriptAnalyzer instead refuses mixed-newline
+/// input outright; we normalize the newlines we own to the first style.
+fn detect_newline(src: &str, parse: &ParseResult, opts: &FormatOptions) -> &'static str {
     match opts.end_of_line {
         EndOfLine::Lf => "\n",
         EndOfLine::Crlf => "\r\n",
         EndOfLine::Auto => {
-            // First line break wins (PSSA requires uniform newlines; we are
-            // lenient and normalize to the dominant first style).
-            match src.find('\n') {
-                Some(i) if i > 0 && src.as_bytes()[i - 1] == b'\r' => "\r\n",
-                Some(_) => "\n",
-                None => {
-                    if src.contains('\r') {
+            // Only plain Newline tokens participate: backtick-continuation
+            // newlines render verbatim, so they must not steer detection.
+            for t in &parse.tokens {
+                if t.kind == TokenKind::Newline {
+                    let text = t.text(src);
+                    return if text.as_bytes()[0] == b'\r' {
                         "\r\n"
                     } else {
                         "\n"
-                    }
+                    };
                 }
+            }
+            // No trivia newlines: fall back to the first newline anywhere
+            // (a forced break will then match whatever a second pass sees).
+            match src.find('\n') {
+                Some(i) if i > 0 && src.as_bytes()[i - 1] == b'\r' => "\r\n",
+                _ => "\n",
             }
         }
     }

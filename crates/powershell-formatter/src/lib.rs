@@ -140,11 +140,47 @@ fn format_impl(
         apply_final_newline(&mut text, options, engine.newline);
     }
 
+    // Safety net: layout changes must never alter protected content. On
+    // structurally odd (yet balanced) input, moving tokens across lines can
+    // flip mode-dependent lexing and swallow a comment or string into a
+    // bare word; verify by re-scanning the output and preserve the input
+    // when anything protected changed.
+    if text != source && !protected_content_matches(source, &text) {
+        let mut diagnostics = analysis.diagnostics;
+        let index = LineIndex::new(source);
+        diagnostics.push(Diagnostic::new(
+            DiagnosticCode::PreservationCheckFailed,
+            Severity::Warning,
+            "formatting would have altered protected content; input preserved unchanged",
+            Span::new(0, 0),
+            index.position(source, 0),
+        ));
+        return FormatResult {
+            text: source.to_owned(),
+            diagnostics,
+            formatted: false,
+        };
+    }
+
     FormatResult {
         text,
         diagnostics: analysis.diagnostics,
         formatted: true,
     }
+}
+
+/// String, here-string, and comment token texts must survive formatting
+/// byte-for-byte, in order.
+fn protected_content_matches(source: &str, formatted: &str) -> bool {
+    let protected = |src: &str| -> Vec<String> {
+        powershell_parser::tokenize(src)
+            .tokens
+            .iter()
+            .filter(|t| t.kind.is_string() || t.kind.is_comment())
+            .map(|t| t.text(src).to_owned())
+            .collect()
+    };
+    protected(source) == protected(formatted)
 }
 
 fn apply_final_newline(text: &mut String, options: &FormatOptions, newline: &str) {

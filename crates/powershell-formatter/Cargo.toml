@@ -10,11 +10,16 @@ publish = false
 [features]
 default = ["serde"]
 serde = ["dep:serde", "dep:serde_json"]
+schema = ["serde", "dep:schemars"]
 
 [dependencies]
 powershell-parser = { path = "../powershell-parser" }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
+schemars = { version = "1", optional = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+proptest = "1"

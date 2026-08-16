@@ -162,8 +162,14 @@ pub(crate) fn apply(engine: &mut Engine<'_>) {
 
         // ── CheckPipe / redundant pipe whitespace ────────────────────
         if kind == TokenKind::Pipe && (opts.space_around_pipe || opts.collapse_space_around_pipe) {
-            // Before.
-            if pos > 0 && plain_gap(engine, pos) && engine.kind(pos - 1) != TokenKind::Pipe {
+            // Before. A `--%` verbatim argument owns the text up to the
+            // pipe; PSSA re-inserts a space here on every run (it is not
+            // idempotent) — we intentionally leave it alone.
+            if pos > 0
+                && plain_gap(engine, pos)
+                && engine.kind(pos - 1) != TokenKind::Pipe
+                && engine.kind(pos - 1) != TokenKind::RawArgument
+            {
                 let w = gap_width(engine, pos);
                 if (w == 0 && opts.space_around_pipe) || (w > 1 && opts.collapse_space_around_pipe)
                 {

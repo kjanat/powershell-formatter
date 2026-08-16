@@ -20,6 +20,9 @@ pub enum DiagnosticCode {
     UnrecognizedToken,
     /// Formatting was skipped because the input could not be analyzed safely.
     FormattingSkipped,
+    /// The post-format verification found that protected content (strings,
+    /// comments) would have changed; the input was preserved instead.
+    PreservationCheckFailed,
     /// An invalid formatting range was requested.
     InvalidRange,
 }
@@ -36,6 +39,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnbalancedOpenDelimiter => "unbalanced-open-delimiter",
             DiagnosticCode::UnrecognizedToken => "unrecognized-token",
             DiagnosticCode::FormattingSkipped => "formatting-skipped",
+            DiagnosticCode::PreservationCheckFailed => "preservation-check-failed",
             DiagnosticCode::InvalidRange => "invalid-range",
         }
     }
