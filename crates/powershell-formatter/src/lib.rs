@@ -1,6 +1,6 @@
 //! Host-independent PowerShell formatting engine.
 
-use powershell_parser::scan;
+use powershell_parser::parse;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BraceStyle {
@@ -45,7 +45,7 @@ pub struct Diagnostic {
 /// package boundary now so the scanner/layout implementation can evolve behind this API.
 #[must_use]
 pub fn format(source: &str, _options: &FormatOptions) -> FormatResult {
-    let _tokens = scan(source);
+    let _analysis = parse(source);
 
     FormatResult {
         text: source.to_owned(),
