@@ -8,12 +8,12 @@ repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
 out_dir="$(cd "$(dirname "$0")" && pwd)/dist"
 
 cargo build -p powershell-formatter-wasm --profile wasm-release \
-	--target wasm32-unknown-unknown --manifest-path "$repo_root/Cargo.toml"
+	--target wasm32-unknown-unknown --manifest-path "${repo_root}/Cargo.toml"
 
 wasm-bindgen \
 	--target web \
-	--out-dir "$out_dir" \
+	--out-dir "${out_dir}" \
 	--no-typescript \
-	"$repo_root/target/wasm32-unknown-unknown/wasm-release/powershell_formatter_wasm.wasm"
+	"${repo_root}/target/wasm32-unknown-unknown/wasm-release/powershell_formatter_wasm.wasm"
 
-ls -la "$out_dir"
+ls -la "${out_dir}"
