@@ -190,15 +190,30 @@ fn align_group(engine: &mut Engine<'_>, cols: &Columns, sites: Vec<Site>) -> boo
         .collect();
     let mut changed = false;
     for (eq, spaces) in updates {
-        let new = Some(spaces.max(1));
+        let want = usize::from(spaces.max(1));
         if matches!(engine.gaps[eq].line, LineState::AsIs) && engine.gaps[eq].orig_newline {
             // Should not happen (sites require same-line), defensive.
             continue;
         }
-        if engine.gaps[eq].exact_spaces != new {
-            engine.gaps[eq].exact_spaces = new;
-            changed = true;
+        // PSSA corrects a site only when its current *character width*
+        // differs from the target; a width-matching gap keeps its bytes
+        // (a lone tab before `=` survives alignment). Compare widths and
+        // leave matching gaps untouched instead of stamping spaces.
+        let current = match engine.gaps[eq].exact_spaces {
+            Some(e) => usize::from(e),
+            None => match engine.gaps[eq].line {
+                LineState::Join { spaces } => usize::from(spaces),
+                _ => engine.parse.tokens[engine.gaps[eq].trivia.clone()]
+                    .iter()
+                    .map(|t| t.text(engine.src).chars().count())
+                    .sum(),
+            },
+        };
+        if current == want {
+            continue;
         }
+        engine.gaps[eq].exact_spaces = Some(spaces.max(1));
+        changed = true;
     }
     changed
 }

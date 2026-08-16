@@ -174,4 +174,7 @@ parity! {
     nested_default: "nested" / "default",
     nested_allman: "nested" / "allman",
     nested_tabs: "nested" / "tabs-noindent",
+    tabs_default: "tabs" / "default",
+    tabs_otbs: "tabs" / "otbs",
+    tabs_expand: "tabs" / "expand-oneline",
 }
