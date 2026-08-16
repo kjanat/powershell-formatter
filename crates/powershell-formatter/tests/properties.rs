@@ -180,7 +180,7 @@ fn reflow_never_breaks_before_a_pulled_up_operator() {
 /// the Wasm package with it. Formatting must decline the input instead.
 #[test]
 fn deep_nesting_is_declined_not_fatal() {
-    for depth in [1_000usize, 100_000] {
+    for depth in [2_000usize, 100_000] {
         let src = format!("{}1{}", "(".repeat(depth), ")".repeat(depth));
         let result = format(&src, &FormatOptions::default());
         assert!(!result.formatted, "depth {depth} should be declined");

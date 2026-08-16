@@ -137,12 +137,14 @@ fn block_kind(open: TokenKind) -> BlockKind {
 /// `parse_into` recurses once per opening delimiter, so unbounded input
 /// depth would overflow the call stack — an abort, not a catchable panic.
 /// Measured thresholds: ~20k levels on a default 8 MiB thread stack, ~10k
-/// on Wasm's 4 MiB, and under 5k on a 1 MiB stack. PowerShell's own parser
-/// gives up well before any of those (`ScriptTooComplicated`, between 10k
-/// and 20k levels), and real scripts nest a couple of dozen deep at most,
-/// so this bound is generous while leaving orders of magnitude of headroom
-/// on the smallest stack we run on.
-const MAX_DEPTH: u32 = 256;
+/// on Wasm's 4 MiB, and between 2k and 5k on a 1 MiB stack. PowerShell's
+/// own parser gives up well before any of those (`ScriptTooComplicated`,
+/// between 10k and 20k levels).
+///
+/// 1024 keeps a wide margin on the smallest stack we run on while staying
+/// far above anything a human writes — real scripts nest a couple of dozen
+/// deep, and the deliberately pathological nesting benchmark reaches 480.
+const MAX_DEPTH: u32 = 1024;
 
 struct Builder<'a> {
     source: &'a str,
