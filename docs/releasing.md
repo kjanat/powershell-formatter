@@ -19,7 +19,9 @@ All released artifacts are built from the same commit and share one version
   (`cargo run -p dprint-plugin-powershell --features schema --bin generate-schema`);
   its `$id` embeds the version.
 - Also attach a `latest.json` (`{ "schemaVersion": 1, "url": "…/plugin.wasm",
-  "version": "X.Y.Z" }`): the plugin's `update_url` points at
+  "version": "X.Y.Z", "checksum": "<sha256 of plugin.wasm>" }` — the shape
+  plugins.dprint.dev serves for registry plugins; dprint verifies the
+  checksum when present): the plugin's `update_url` points at
   `releases/latest/download/latest.json`, which GitHub keeps aimed at the
   newest release automatically.
 - Tag releases with **bare semver** (`0.1.0`, no `v` prefix) — the tag must
