@@ -266,6 +266,32 @@ mod tests {
     }
 
     #[test]
+    fn fuzz_regression_comment_never_swallowed() {
+        // Fuzz-found (minimized): joining a line-leading operator to the
+        // previous line flipped the lexer into argument mode, absorbing the
+        // `#` comment into a bare word. The preservation check must catch
+        // this and preserve the input.
+        let src = ">\n/s#";
+        let res = format(src, &FormatOptions::default());
+        assert_eq!(
+            protected(&res.text),
+            protected(src),
+            "comments must never be swallowed"
+        );
+        let twice = format(&res.text, &FormatOptions::default());
+        assert_eq!(res.text, twice.text);
+    }
+
+    fn protected(src: &str) -> Vec<String> {
+        powershell_parser::tokenize(src)
+            .tokens
+            .iter()
+            .filter(|t| t.kind.is_comment() || t.kind.is_string())
+            .map(|t| t.text(src).to_owned())
+            .collect()
+    }
+
+    #[test]
     fn long_pipelines_reflow_at_line_width() {
         let src = "Get-Process | Where-Object { $_.CPU -gt 5 } | Sort-Object CPU | Select-Object -First 3";
         let narrow = FormatOptions {
