@@ -18,12 +18,14 @@ path              = "src/bin/generate_schema.rs"
 required-features = ["schema"]
 
 [dependencies]
-dprint-core.workspace          = true
-json-schema-sort               = { workspace = true, optional = true }
-powershell-formatter.workspace = true
-schemars                       = { workspace = true, optional = true }
-serde.workspace                = true
-serde_json.workspace           = true
+powershell-formatter.path = "../powershell-formatter"
+
+dprint-core.workspace = true
+serde.workspace       = true
+serde_json.workspace  = true
+
+json-schema-sort = { workspace = true, optional = true }
+schemars         = { workspace = true, optional = true }
 
 [features]
 schema = ["dep:json-schema-sort", "dep:schemars", "powershell-formatter/schema"]

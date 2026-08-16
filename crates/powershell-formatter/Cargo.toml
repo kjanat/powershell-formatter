@@ -3,19 +3,20 @@ name                   = "powershell-formatter"
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
+description            = "Standalone PowerShell formatter reproducing PSScriptAnalyzer's Invoke-Formatter"
 repository.workspace   = true
 license.workspace      = true
-description            = "Standalone PowerShell formatter reproducing PSScriptAnalyzer's Invoke-Formatter"
 
 [[bench]]
 harness = false
 name    = "formatting"
 
 [dependencies]
-powershell-parser.workspace = true
-schemars                    = { workspace = true, optional = true }
-serde             = { version = "1", features = ["derive"], optional = true }
-serde_json        = { version = "1", optional = true }
+powershell-parser.path = "../powershell-parser"
+
+schemars   = { workspace = true, optional = true }
+serde      = { workspace = true, features = ["derive"], optional = true }
+serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
 divan.workspace    = true

@@ -3,13 +3,13 @@ name                   = "psfmt"
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
+description            = "Fast standalone PowerShell formatter CLI (Invoke-Formatter compatible, no PowerShell required)"
 repository.workspace   = true
 license.workspace      = true
-description            = "Fast standalone PowerShell formatter CLI (Invoke-Formatter compatible, no PowerShell required)"
 
 [dependencies]
-powershell-formatter.workspace = true
-serde_json.workspace           = true
+powershell-formatter.path = "../../crates/powershell-formatter"
+serde_json.workspace      = true
 
 [lints]
 workspace = true

@@ -13,10 +13,11 @@ publish                = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-powershell-formatter.workspace = true
-serde.workspace                = true
-serde-wasm-bindgen.workspace   = true
-wasm-bindgen.workspace         = true
+powershell-formatter.path = "../powershell-formatter"
+
+serde.workspace              = true
+serde-wasm-bindgen.workspace = true
+wasm-bindgen.workspace       = true
 
 [lints]
 workspace = true

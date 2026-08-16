@@ -5,23 +5,24 @@ on:
   push:
     branches: [master]
     paths-ignore:
-      - "docs/**"
       - "**/*.md"
-      - LICENSE
       - "**/LICENSE"
+      - "docs/**"
       - .coderabbit.yaml
       - .editorconfig
   pull_request:
     paths-ignore:
-      - "docs/**"
       - "**/*.md"
-      - LICENSE
       - "**/LICENSE"
+      - "docs/**"
       - .coderabbit.yaml
       - .editorconfig
 
-permissions: { contents: read }
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+permissions: { contents: read }
 env: { CARGO_TERM_COLOR: always }
 
 jobs:

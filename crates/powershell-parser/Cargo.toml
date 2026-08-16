@@ -3,9 +3,9 @@ name                   = "powershell-parser"
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
+description            = "Lossless, formatter-oriented PowerShell lexer and structural parser"
 repository.workspace   = true
 license.workspace      = true
-description            = "Lossless, formatter-oriented PowerShell lexer and structural parser"
 
 [dependencies]
 bitflags.workspace = true
