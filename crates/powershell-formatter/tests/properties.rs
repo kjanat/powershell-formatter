@@ -145,3 +145,47 @@ proptest! {
         }
     }
 }
+
+/// Regression (found by `fragment_soup_is_stable`): the reflow width
+/// measurement used to count across a backtick continuation, but the indent
+/// phase widens the continuation's indentation *after* reflow ran — so a
+/// second pass measured a longer line than the first and reflowed a line
+/// the first pass left alone.
+#[test]
+fn reflow_stops_measuring_at_backtick_continuation() {
+    let src = "; foreach if       @args | 'str' <# block #>   | if | foreach 42 42 \"i $x\" 42 <# block #> $env:PATH `\n -eq 'str' 'str'";
+    let opts = FormatOptions::default();
+    let once = format(src, &opts);
+    assert!(once.formatted);
+    let twice = format(&once.text, &opts);
+    assert_eq!(once.text, twice.text, "src: {src:?}");
+}
+
+/// Regression (found by `fragment_soup_is_stable`): reflow used to break
+/// after a pipe whose next element starts with a spaced operator, but the
+/// whitespace phase pulls a line-leading operator back onto the previous
+/// line — so the next pass undid the break.
+#[test]
+fn reflow_never_breaks_before_a_pulled_up_operator() {
+    let src = "$env:PATH <# block #> $x Get-Item Get-Item $env:PATH $x $x $x $x |   $x $x 'str' Get-Item \u{e9}\u{1f389} | -eq 'str' && Get-Item $x $x";
+    let opts = FormatOptions::default();
+    let once = format(src, &opts);
+    assert!(once.formatted);
+    let twice = format(&once.text, &opts);
+    assert_eq!(once.text, twice.text, "src: {src:?}");
+}
+
+/// Regression (found by `fragment_soup_is_stable`): a line-leading `=` lexes
+/// as an assignment operator, but once the whitespace phase pulls it onto
+/// the command line above, a re-format sees it as a command argument — a
+/// different pipeline structure, hence different indentation. The fixpoint
+/// loop in `format` must absorb the reclassification.
+#[test]
+fn operator_reclassification_converges() {
+    let src = "Get-Item \n = `\n | \n $x -eq";
+    let opts = FormatOptions::default();
+    let once = format(src, &opts);
+    assert!(once.formatted);
+    let twice = format(&once.text, &opts);
+    assert_eq!(once.text, twice.text, "src: {src:?}");
+}

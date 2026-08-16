@@ -47,7 +47,7 @@ fn prev_is_member_name(engine: &Engine<'_>, pos: usize) -> bool {
 /// `-join`/`-split`), `&&` and `||` are all normalized. Not in the set:
 /// `..` (never touched), `-not`/`-bnot`, `!`, `++`/`--`, member access,
 /// ternary parts, and redirections.
-fn operator_in_set(engine: &Engine<'_>, pos: usize) -> bool {
+pub(crate) fn operator_in_set(engine: &Engine<'_>, pos: usize) -> bool {
     match engine.kind(pos) {
         TokenKind::Operator(OperatorKind::Assignment) => true,
         TokenKind::AndAnd | TokenKind::OrOr => true,

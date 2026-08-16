@@ -87,13 +87,17 @@ Measured on x86_64-linux (divan benchmarks, `cargo bench -p powershell-formatter
 | Input                       | Full format | Throughput |
 | --------------------------- | ----------- | ---------- |
 | tiny (24 B)                 | 2.4 µs      | —          |
-| medium (4.6 KB real script) | 127 µs      | 37 MB/s    |
-| large (614 KB real scripts) | 39 ms       | 16 MB/s    |
-| here-string heavy (220 KB)  | 538 µs      | 409 MB/s   |
+| medium (4.6 KB real script) | 220 µs      | 21 MB/s    |
+| large (614 KB real scripts) | 60 ms       | 10 MB/s    |
+| here-string heavy (220 KB)  | 665 µs      | 331 MB/s   |
+
+Numbers include the idempotence-verification pass (a changed output is
+re-formatted once to confirm it is a fixpoint — see
+[architecture](docs/architecture.md)); already-formatted input skips it.
 
 Against the oracle on the same medium script: warm `Invoke-Formatter` needs
 ≈21 ms per format in an already-running PowerShell; `psfmt` needs ≈2.7 ms
-**per process invocation** (spawn + read + format + write), ≈130 µs of which
+**per process invocation** (spawn + read + format + write), ≈220 µs of which
 is formatting. Cold start: `pwsh -NoProfile` + module import + one format
 ≈590 ms; `psfmt` ≈3 ms — editors can invoke it directly, no daemon needed.
 

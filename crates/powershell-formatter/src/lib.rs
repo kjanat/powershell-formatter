@@ -93,6 +93,51 @@ fn format_impl(
     catalog: Option<&dyn CommandCatalog>,
     range: Option<FormatRange>,
 ) -> FormatResult {
+    let mut result = format_once(source, options, catalog, range);
+    // Idempotence is a hard invariant, but moving tokens across lines can
+    // change mode-dependent token classes (`=` after a command name is an
+    // argument; at statement start it is an operator), which later phases
+    // read. Whole-file formatting therefore verifies the output is a
+    // fixpoint, stepping once more when it is not. Range formatting is
+    // exempt: the range names coordinates in the *original* text, so
+    // re-running it against shifted text would format the wrong region.
+    if range.is_some() || !result.formatted || result.text == source {
+        return result;
+    }
+    for _ in 0..2 {
+        let next = format_once(&result.text, options, catalog, None);
+        if next.formatted && next.text == result.text {
+            return result;
+        }
+        if !next.formatted {
+            break;
+        }
+        result.text = next.text;
+    }
+    // No stable layout within the pass budget (or an intermediate result
+    // stopped formatting cleanly): preserve the input.
+    let index = LineIndex::new(source);
+    let mut diagnostics = result.diagnostics;
+    diagnostics.push(Diagnostic::new(
+        DiagnosticCode::FormattingSkipped,
+        Severity::Warning,
+        "formatting did not reach a stable result; input preserved unchanged",
+        Span::new(0, 0),
+        index.position(source, 0),
+    ));
+    FormatResult {
+        text: source.to_owned(),
+        diagnostics,
+        formatted: false,
+    }
+}
+
+fn format_once(
+    source: &str,
+    options: &FormatOptions,
+    catalog: Option<&dyn CommandCatalog>,
+    range: Option<FormatRange>,
+) -> FormatResult {
     let analysis = parse(source);
 
     // Safety policy: structurally uncertain input is preserved untouched.

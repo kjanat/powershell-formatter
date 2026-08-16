@@ -32,13 +32,18 @@ pub(crate) fn apply(engine: &mut Engine<'_>) {
 }
 
 /// Approximate the rendered width of the line holding tokens
-/// `[start, end)`. Uses decided gap widths; multi-line tokens end the
-/// measurement (their tails live on other lines).
+/// `[start, end)`. Uses decided gap widths; multi-line tokens and backtick
+/// continuations end the measurement (their tails live on other lines, and
+/// the indent phase may still change a continuation's indentation, so
+/// counting across one is not stable between passes).
 fn line_exceeds_width(engine: &Engine<'_>, start: usize, end: usize, width: usize) -> bool {
     let mut col = 0usize;
     for pos in start..end {
         if pos > start {
             let gap = &engine.gaps[pos];
+            if gap.has_continuation {
+                return false;
+            }
             col += match &gap.line {
                 LineState::Join { spaces } => *spaces as usize,
                 LineState::AsIs => engine.parse.tokens[gap.trivia.clone()]
@@ -79,6 +84,12 @@ fn break_after_pipes(engine: &mut Engine<'_>, start: usize, end: usize) {
         // already decided those stay one-line, and changing that here would
         // make a second pass decide differently (non-idempotence).
         if engine.enclosing[pos].is_some_and(|open| engine.pair_is_one_line(open)) {
+            continue;
+        }
+        // Never break before a spaced operator: CheckOperator pulls a
+        // line-leading operator back onto the previous line, so the break
+        // would be undone on the next pass.
+        if engine.opts.space_around_operator && super::whitespace::operator_in_set(engine, after) {
             continue;
         }
         engine.gaps[after].line = LineState::Break {

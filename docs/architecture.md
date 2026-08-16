@@ -66,6 +66,16 @@ the input unchanged if any protected content would differ (this can only
 trigger on structurally odd input where moving tokens across lines flips
 mode-dependent lexing).
 
+Idempotence is enforced, not assumed: PowerShell token classes depend on
+layout (`=` after a command name is an argument; at statement start it is
+an operator), so a layout change can hand a re-format a different token
+stream. When whole-file formatting changes the text, the engine verifies
+the result is a fixpoint, stepping once more if reclassification moved it;
+input that never stabilizes (not observed outside adversarial fuzzing) is
+returned unchanged with a diagnostic. Already-formatted input pays for no
+extra pass. Range formatting is exempt — the range names coordinates in
+the original text, so only one pass is meaningful.
+
 Range formatting falls out of the model: each gap decision and respelling
 has an original span, and rendering applies only those inside the requested
 range, emitting original bytes elsewhere.
