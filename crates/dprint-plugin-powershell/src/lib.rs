@@ -130,19 +130,19 @@ impl SyncPluginHandler<Configuration> for PowerShellPluginHandler {
             version: env!("CARGO_PKG_VERSION").to_string(),
             config_key: "powershell".to_string(),
             help_url: env!("CARGO_PKG_REPOSITORY").to_string(),
-            // The plugins.dprint.dev proxy only serves repositories named
-            // dprint-plugin-<name>; this plugin lives in a monorepo, so its
-            // schema and update metadata are plain GitHub release assets
-            // (tags are bare semver, so the tag equals the crate version).
+            // plugins.dprint.dev proxies GitHub releases for *any* repo
+            // under its full <user>/<repo> name (the dprint-plugin-<x>
+            // shorthand is optional and does not apply to this monorepo).
+            // It also generates latest.json — checksum included — from the
+            // newest release, so no hand-built update asset is needed.
+            // Tags are bare semver, so the tag equals the crate version.
             config_schema_url: format!(
-                "{}/releases/download/{}/schema.json",
-                env!("CARGO_PKG_REPOSITORY"),
+                "https://plugins.dprint.dev/kjanat/powershell-formatter/{}/schema.json",
                 env!("CARGO_PKG_VERSION")
             ),
-            update_url: Some(format!(
-                "{}/releases/latest/download/latest.json",
-                env!("CARGO_PKG_REPOSITORY")
-            )),
+            update_url: Some(
+                "https://plugins.dprint.dev/kjanat/powershell-formatter/latest.json".to_string(),
+            ),
         }
     }
 

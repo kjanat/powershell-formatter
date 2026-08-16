@@ -12,7 +12,10 @@ fn main() {
         map.insert(
             "$id".to_owned(),
             serde_json::Value::String(format!(
-                "https://plugins.dprint.dev/kjanat/powershell/{}/schema.json",
+                // Full repo name: plugins.dprint.dev serves any GitHub
+                // repo's releases; only repos actually named
+                // dprint-plugin-<x> may shorten the path.
+                "https://plugins.dprint.dev/kjanat/powershell-formatter/{}/schema.json",
                 env!("CARGO_PKG_VERSION")
             )),
         );
