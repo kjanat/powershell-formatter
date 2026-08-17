@@ -1,0 +1,1 @@
+If you hate any of the reviews you get on PR's, and would like coderabbit to give more precise, detailed, helpful comments/reviews, then feel free to edit [it's config](./.coderabbit.yaml). The available settings are in the first line's jsonschema.
