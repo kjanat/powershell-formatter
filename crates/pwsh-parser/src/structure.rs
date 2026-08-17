@@ -150,15 +150,8 @@ impl ParseResult {
     /// The [`BlockKind`] opened by the token at `idx`, if it is an opener.
     #[must_use]
     pub fn open_kind(&self, idx: usize) -> Option<BlockKind> {
-        match self.tokens.get(idx)?.kind {
-            TokenKind::LCurly => Some(BlockKind::ScriptBlock),
-            TokenKind::AtCurly => Some(BlockKind::Hashtable),
-            TokenKind::LParen => Some(BlockKind::Paren),
-            TokenKind::AtParen => Some(BlockKind::ArrayExpression),
-            TokenKind::DollarParen => Some(BlockKind::SubExpression),
-            TokenKind::LBracket => Some(BlockKind::Bracket),
-            _ => None,
-        }
+        let kind = self.tokens.get(idx)?.kind;
+        kind.is_open_delimiter().then(|| block_kind(kind))
     }
 }
 
@@ -181,6 +174,9 @@ fn closes(open: TokenKind, close: TokenKind) -> bool {
     )
 }
 
+/// The single delimiter→[`BlockKind`] mapping. Callers guard with
+/// [`TokenKind::is_open_delimiter`]; `LCurly` is the only opener left for
+/// the catch-all.
 fn block_kind(open: TokenKind) -> BlockKind {
     match open {
         TokenKind::AtCurly => BlockKind::Hashtable,
