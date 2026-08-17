@@ -23,7 +23,7 @@ $expected = Join-Path $root 'expected'
 New-Item -ItemType Directory -Force -Path $expected | Out-Null
 
 # Profile name → Invoke-Formatter -Settings value. Names must match the
-# option mapping in crates/powershell-formatter/tests/pssa_parity.rs.
+# option mapping in crates/pwsh-formatter/tests/pssa_parity.rs.
 $profiles = [ordered]@{
     'default'    = 'CodeFormatting'
     'otbs'       = 'CodeFormattingOTBS'

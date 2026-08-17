@@ -4,8 +4,8 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use powershell_formatter::{FormatOptions, format};
-use powershell_parser::tokenize;
+use pwsh_formatter::{FormatOptions, format};
+use pwsh_parser::tokenize;
 
 fuzz_target!(|data: &[u8]| {
     let Ok(src) = core::str::from_utf8(data) else {

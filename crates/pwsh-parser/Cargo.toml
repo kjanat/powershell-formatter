@@ -1,0 +1,21 @@
+[package]
+name                   = "pwsh-parser"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+description            = "Lossless, formatter-oriented PowerShell lexer and structural parser"
+readme                 = "README.md"
+repository.workspace   = true
+license.workspace      = true
+keywords               = ["formatter", "lexer", "parser", "powershell", "syntax"]
+categories             = ["development-tools", "parser-implementations"]
+
+[dependencies]
+bitflags.workspace = true
+
+[dev-dependencies]
+serde.workspace      = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -4,7 +4,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use powershell_parser::parse;
+use pwsh_parser::parse;
 
 fuzz_target!(|data: &[u8]| {
     let Ok(src) = core::str::from_utf8(data) else {

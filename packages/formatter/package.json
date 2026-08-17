@@ -1,9 +1,10 @@
 {
-	"name": "@kjanat/powershell-formatter",
+	"name": "pwsh-formatter",
 	"version": "0.0.0",
 	"description": "Fast, standalone PowerShell formatter for browsers and Node.js (WebAssembly, no PowerShell required)",
 	"keywords": [
 		"powershell",
+		"pwsh",
 		"formatter",
 		"wasm",
 		"psscriptanalyzer"
@@ -28,8 +29,8 @@
 		"index.js",
 		"index.node.js",
 		"index.d.ts",
-		"dist/powershell_formatter_wasm.js",
-		"dist/powershell_formatter_wasm_bg.wasm"
+		"dist/pwsh_formatter_wasm.js",
+		"dist/pwsh_formatter_wasm_bg.wasm"
 	],
 	"scripts": {
 		"build": "./build.sh",

@@ -3,13 +3,47 @@
 All released artifacts are built from the same commit and share one version
 (`workspace.package.version` in [`Cargo.toml`]).
 
+## Cutting a release
+
+1. Bump `workspace.package.version` in [`Cargo.toml`] — together with the
+   `pwsh-parser`/`pwsh-formatter` version strings right below it in
+   `[workspace.dependencies]` — regenerate [`schema.json`] (its `$id`
+   embeds the version), commit, merge to `master`.
+2. Tag that commit with the **bare semver** version (`0.1.0` — no `v`, no
+   dash) and push the tag.
+
+[`release.yml`] does the rest: it refuses a tag that differs from the
+workspace version, rebuilds `plugin.wasm` + `schema.json`, runs the dprint
+CLI end-to-end test and both packages' test suites, and then publishes
+every channel below. Publish steps skip versions that already exist, so a
+partially failed run is fixed by re-running it — never by mutating what
+already shipped.
+
+Publishing runs in three [deployment environments] — `dprint`, `npm`, and
+`crates-io` (auto-created on first run; one job per published artifact,
+each linking the versioned page it published). Configure protection rules
+there if releases should wait for approval, and prefer scoping the secrets
+to their environment over repo-level:
+
+- `dprint`: `DPRINT_PLUGIN_PWSH` (fine-grained PAT for the mirror repo;
+  see below).
+- `npm`: `NPM_TOKEN` (automation token that can publish both packages;
+  provenance is attached automatically while the repo is public).
+- `crates-io`: the workflow first mints a short-lived token via crates.io
+  [trusted publishing] (configure it per crate for this repo +
+  `release.yml`); `CARGO_REGISTRY_TOKEN` is the fallback when that isn't
+  set up. Publishes retry through crates.io rate limits by honoring the
+  server's `try again after <date>` response.
+
 ## Artifacts
 
-| Artifact           | Build                                                                 | Ship as                                                      |
-| ------------------ | --------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `psfmt` native CLI | `cargo build --release -p psfmt`                                      | platform binaries                                            |
-| dprint plugin      | `cargo wasm-plugin` (alias in [`.cargo/config.toml`])                 | `plugin.wasm` + `schema.json` release on the artifact mirror |
-| npm package        | [`packages/formatter/build.sh`] then `npm publish` in the package dir | `@kjanat/powershell-formatter`                               |
+| Artifact           | Build                                                 | Ship as                                                      |
+| ------------------ | ----------------------------------------------------- | ------------------------------------------------------------ |
+| `psfmt` native CLI | `cargo build --release -p psfmt`                      | platform binaries (not yet automated)                        |
+| dprint plugin      | `cargo wasm-plugin` (alias in [`.cargo/config.toml`]) | `plugin.wasm` + `schema.json` release on the artifact mirror |
+| npm: rich JS API   | [`packages/formatter/build.sh`]                       | `pwsh-formatter`                                             |
+| npm: wasm carrier  | [`packages/dprint-plugin/build.sh`]                   | `dprint-plugin-pwsh`                                         |
+| Rust crates        | `cargo publish` (dependency order)                    | crates.io: `pwsh-parser`, `pwsh-formatter`, `psfmt`          |
 
 ## dprint plugin conventions
 
@@ -21,9 +55,9 @@ All released artifacts are built from the same commit and share one version
   Actions secret — a fine-grained PAT scoped to that repo with
   `Contents: read and write`).
 - The release asset **must** be named `plugin.wasm` (copy
-  `target/wasm32-unknown-unknown/wasm-release/dprint_plugin_powershell.wasm`).
+  `target/wasm32-unknown-unknown/wasm-release/dprint_plugin_pwsh.wasm`).
 - Regenerate and publish [`schema.json`]
-  (`cargo run -p dprint-plugin-powershell --features schema --bin generate-schema`);
+  (`cargo run -p dprint-plugin-pwsh --features schema --bin generate-schema`);
   its `$id` embeds the version.
 - The canonical public identity is the
   [plugins.dprint.dev](https://github.com/dprint/plugins) shorthand
@@ -36,8 +70,8 @@ All released artifacts are built from the same commit and share one version
     included; no hand-built `latest.json` asset is needed.
     They start resolving with the mirror's first release (the proxy fetches
     from GitHub releases, so an empty or private repo yields 404s).
-- The mirror was created as `dprint-plugin-powershell` and renamed, so
-  GitHub redirects the old name. That alias is an **undocumented courtesy
+- The mirror was created as `dprint-plugin-powershell` and renamed to
+  `dprint-plugin-pwsh`, so GitHub redirects the old name. That alias is an **undocumented courtesy
   only**: `kjanat/powershell` must never appear in anything durable —
   embedded URLs, docs, registry entries, or release chains — because the
   redirect's behavior through the proxy is not contractual.
@@ -49,12 +83,27 @@ All released artifacts are built from the same commit and share one version
   aggressively, and the proxy caches a fetched URL forever. Never re-upload
   an asset to an existing release — bump and re-release, on both repos.
 
-## npm package
+## npm packages
 
-The published package contains the entry points (`index.js`,
-`index.node.js`, `index.d.ts`), the two generated files in `dist/`, and the
-usual npm metadata ([`package.json`], `LICENSE`). Keep the package version
-in lockstep with the workspace; npm publishes are immutable too.
+Two packages, one pipeline, deliberately not deduplicated — each Wasm build
+is shaped for its consumer:
+
+- **`pwsh-formatter`** ([`packages/formatter`]) — the
+  wasm-bindgen build with the rich API (`format`, `formatRange`, structured
+  diagnostics, catalog injection); zero runtime dependencies.
+- **`dprint-plugin-pwsh`** ([`packages/dprint-plugin`]) — the
+  dprint-ABI `plugin.wasm` plus `getPath()`/`getBuffer()`, the
+  `@dprint/json`-style carrier for [`@dprint/formatter`] hosts. Bonus: the
+  packaged wasm is a valid dprint **CLI** install source via the npm CDN
+  mirrors (`https://cdn.jsdelivr.net/npm/dprint-plugin-pwsh@<version>/plugin.wasm`)
+  or a local `node_modules` path.
+
+Both packages sit at version `0.0.0` in-tree; the release workflow stamps
+the tag version at publish time (`npm version --no-git-tag-version`), so
+the versions cannot drift from the workspace. The `plugin.wasm` inside
+`packages/dprint-plugin` is generated output — gitignored, rebuilt by
+`build.sh`; CI verifies the publishable file set with `npm pack --dry-run`
+(see the package's `test/pack.test.mjs`). npm publishes are immutable too.
 
 ## Pinned toolchain pieces
 
@@ -81,11 +130,17 @@ npm package tarball                    82 KB
 
 CI enforces a 1 MB raw budget on both wasm artifacts (see [`ci.yml`]).
 
+[deployment environments]: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments
+[trusted publishing]: https://crates.io/docs/trusted-publishing
 [`Cargo.toml`]: ../Cargo.toml
 [`.cargo/config.toml`]: ../.cargo/config.toml
+[`release.yml`]: ../.github/workflows/release.yml
+[`packages/formatter`]: ../packages/formatter
 [`packages/formatter/build.sh`]: ../packages/formatter/build.sh
-[`package.json`]: ../packages/formatter/package.json
-[`schema.json`]: ../crates/dprint-plugin-powershell/deployment/schema.json
+[`packages/dprint-plugin`]: ../packages/dprint-plugin
+[`packages/dprint-plugin/build.sh`]: ../packages/dprint-plugin/build.sh
+[`@dprint/formatter`]: https://github.com/dprint/js-formatter
+[`schema.json`]: ../crates/dprint-plugin-pwsh/deployment/schema.json
 [`tests/powershell-oracle/fixtures/VERSION`]: ../tests/powershell-oracle/fixtures/VERSION
 [`tests/pssa-parity/expected/VERSION`]: ../tests/pssa-parity/expected/VERSION
 [`ci.yml`]: ../.github/workflows/ci.yml

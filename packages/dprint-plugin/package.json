@@ -1,0 +1,42 @@
+{
+	"name": "dprint-plugin-pwsh",
+	"version": "0.0.0",
+	"description": "PowerShell dprint plugin (plugin.wasm) packaged for @dprint/formatter hosts",
+	"keywords": [
+		"powershell",
+		"pwsh",
+		"formatter",
+		"dprint",
+		"wasm"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kjanat/powershell-formatter.git",
+		"directory": "packages/dprint-plugin"
+	},
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./index.d.ts",
+			"default": "./index.js"
+		}
+	},
+	"main": "./index.js",
+	"types": "./index.d.ts",
+	"files": [
+		"index.js",
+		"index.d.ts",
+		"plugin.wasm"
+	],
+	"scripts": {
+		"build": "./build.sh",
+		"test": "node --test"
+	},
+	"devDependencies": {
+		"@dprint/formatter": "^0.5.1"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}

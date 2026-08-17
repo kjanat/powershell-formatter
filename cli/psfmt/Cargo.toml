@@ -4,12 +4,15 @@ version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
 description            = "Fast standalone PowerShell formatter CLI (Invoke-Formatter compatible, no PowerShell required)"
+readme                 = "README.md"
 repository.workspace   = true
 license.workspace      = true
+keywords               = ["cli", "formatter", "powershell", "psscriptanalyzer"]
+categories             = ["command-line-utilities", "development-tools"]
 
 [dependencies]
-powershell-formatter.path = "../../crates/powershell-formatter"
-serde_json.workspace      = true
+pwsh-formatter.workspace = true
+serde_json.workspace     = true
 
 [lints]
 workspace = true

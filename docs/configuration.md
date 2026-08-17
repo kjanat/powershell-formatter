@@ -3,17 +3,17 @@
 One conceptual model — the Rust `FormatOptions` struct — drives every
 surface:
 
-- **Rust**: `powershell_formatter::FormatOptions` (strong enums, serde
+- **Rust**: `pwsh_formatter::FormatOptions` (strong enums, serde
   camelCase).
 - **CLI**: `psfmt --config file.json` deserializes the same camelCase JSON;
   `--preset default|otbs|allman|stroustrup` selects a preset.
-- **dprint**: the `"powershell"` key in `dprint.json`. Known keys are
+- **dprint**: the `"pwsh"` key in `dprint.json`. Known keys are
   derived from the serde surface of `FormatOptions` at runtime, so the
   plugin cannot accept keys the core does not have; unknown keys and
   invalid values produce configuration diagnostics.
-- **JSON Schema**: [`crates/dprint-plugin-powershell/deployment/schema.json`](../crates/dprint-plugin-powershell/deployment/schema.json),
+- **JSON Schema**: [`crates/dprint-plugin-pwsh/deployment/schema.json`](../crates/dprint-plugin-pwsh/deployment/schema.json),
   generated from the same type via `schemars`
-  (`cargo run -p dprint-plugin-powershell --features schema --bin generate-schema`);
+  (`cargo run -p dprint-plugin-pwsh --features schema --bin generate-schema`);
   CI fails if it drifts.
 - **JS/TS**: [`packages/formatter`](../packages/formatter) accepts the same camelCase object; its
   `index.d.ts` is validated in the package tests against the keys the wasm

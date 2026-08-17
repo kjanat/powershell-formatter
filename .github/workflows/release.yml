@@ -1,0 +1,266 @@
+name: Release
+
+# Pushing a bare-semver tag (dash-free, equal to workspace.package.version)
+# publishes every distribution channel from that one commit:
+#
+#   verify ── build ──┬─ mirror     GitHub release on kjanat/dprint-plugin-pwsh
+#                     │             (plugin.wasm + schema.json) — serves
+#                     │             `dprint add kjanat/pwsh`.
+#                     ├─ npm        pwsh-formatter + dprint-plugin-pwsh,
+#                     │             per-package matrix.
+#                     └─ crates-io  pwsh-parser → pwsh-formatter → psfmt,
+#                                   serialized matrix in dependency order.
+#
+# Every channel is immutable (npm, crates.io, GitHub releases, the
+# plugins.dprint.dev cache): a bad release is fixed by bumping the version
+# and tagging again, never by replacing artifacts. Publish jobs skip
+# already-published versions so a partially failed run can simply be re-run.
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+
+permissions: { contents: read }
+env: { CARGO_TERM_COLOR: always }
+
+jobs:
+  verify:
+    name: verify tag matches the workspace versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - run: |
+          version="$(yq '.workspace.package.version' Cargo.toml)"
+          if [[ "${GITHUB_REF_NAME}" != "${version}" ]]; then
+            echo "tag ${GITHUB_REF_NAME} != workspace.package.version ${version}" >&2
+            exit 1
+          fi
+          # The internal dep versions must move in lockstep, or a published
+          # crate would resolve an older release of its sibling.
+          for dep in pwsh-parser pwsh-formatter; do
+            depver="$(yq ".workspace.dependencies.${dep}.version" Cargo.toml)"
+            if [[ "${depver}" != "${version}" ]]; then
+              echo "workspace.dependencies.${dep}.version ${depver} != ${version}" >&2
+              exit 1
+            fi
+          done
+
+  build:
+    name: build + test all artifacts
+    needs: [verify]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: latest }
+      - uses: kjanat/install-dprint@v2
+      - uses: cargo-bins/cargo-binstall@b629f84e79e8fbc4f76616a8efd340f3ea605cab # main, 2026-08-17
+      - name: Install the pinned wasm-bindgen-cli
+        run: |
+          pinned="$(yq '.workspace.dependencies.wasm-bindgen' Cargo.toml)"
+          cargo binstall --no-confirm wasm-bindgen-cli --version "${pinned#=}" --locked
+      - name: Build plugin.wasm and schema.json
+        run: |
+          cargo build -p dprint-plugin-pwsh --profile wasm-release \
+            --target wasm32-unknown-unknown
+          cargo run -p dprint-plugin-pwsh --features schema --bin generate-schema
+          # The committed schema must match the tagged source, and its $id
+          # must embed exactly this version (proves CARGO_PKG_VERSION — and
+          # so every URL baked into the plugin — agrees with the tag).
+          git diff --exit-code crates/dprint-plugin-pwsh/deployment/schema.json
+          grep -Fq "https://plugins.dprint.dev/kjanat/pwsh/${GITHUB_REF_NAME}/schema.json" \
+            crates/dprint-plugin-pwsh/deployment/schema.json
+          mkdir release-assets
+          cp target/wasm32-unknown-unknown/wasm-release/dprint_plugin_pwsh.wasm \
+            release-assets/plugin.wasm
+          cp crates/dprint-plugin-pwsh/deployment/schema.json release-assets/schema.json
+          # Same budget CI enforces; a release must never ship past it.
+          [[ "$(stat -c%s release-assets/plugin.wasm)" -le 1048576 ]]
+      - name: dprint plugin end-to-end
+        run: crates/dprint-plugin-pwsh/tests/e2e.sh
+      - name: Build, test, and pack the npm packages
+        run: |
+          mkdir npm-tarballs
+          for dir in packages/formatter packages/dprint-plugin; do
+            pushd "${dir}" >/dev/null
+            bash build.sh
+            [[ -f package-lock.json ]] && npm ci
+            npm test
+            # Stamp the tag version at pack time; the tree stays at 0.0.0.
+            npm version "${GITHUB_REF_NAME}" --no-git-tag-version
+            npm pack --pack-destination "${GITHUB_WORKSPACE}/npm-tarballs"
+            popd >/dev/null
+          done
+          ls -la npm-tarballs
+      - uses: actions/upload-artifact@v7
+        with: { name: release-assets, path: release-assets/, retention-days: 14, if-no-files-found: error }
+      - uses: actions/upload-artifact@v7
+        with: { name: npm-tarballs, path: npm-tarballs/, retention-days: 14, if-no-files-found: error }
+
+  mirror:
+    name: publish mirror release
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment:
+      name: dprint
+      url: https://github.com/kjanat/dprint-plugin-pwsh/releases/tag/${{ github.ref_name }}
+    env:
+      GH_TOKEN: ${{ secrets.DPRINT_PLUGIN_PWSH }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: release-assets, path: release-assets }
+      - name: gh release create on kjanat/dprint-plugin-pwsh
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "${tag}" --repo kjanat/dprint-plugin-pwsh >/dev/null 2>&1; then
+            echo "mirror release ${tag} already exists; leaving it untouched (immutable)"
+            exit 0
+          fi
+          sha_wasm="$(sha256sum release-assets/plugin.wasm | cut -d' ' -f1)"
+          sha_schema="$(sha256sum release-assets/schema.json | cut -d' ' -f1)"
+          gh release create "${tag}" \
+            release-assets/plugin.wasm release-assets/schema.json \
+            --repo kjanat/dprint-plugin-pwsh --title "${tag}" --notes "$(cat <<EOF
+          Install: \`dprint add kjanat/pwsh\`
+
+          Built from [kjanat/powershell-formatter@${tag}](https://github.com/kjanat/powershell-formatter/tree/${tag}).
+
+          sha256:
+          - \`plugin.wasm\`: \`${sha_wasm}\`
+          - \`schema.json\`: \`${sha_schema}\`
+          EOF
+            )"
+
+  npm:
+    name: npm publish ${{ matrix.pkg }}
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write } # provenance
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/${{ matrix.pkg }}/v/${{ github.ref_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg: [pwsh-formatter, dprint-plugin-pwsh]
+    env:
+      PKG: ${{ matrix.pkg }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      PRIVATE_REPO: ${{ github.event.repository.private }}
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: latest
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v8
+        with: { name: npm-tarballs, path: npm-tarballs }
+      - name: npm publish
+        run: |
+          if [[ -n "$(npm view "${PKG}@${GITHUB_REF_NAME}" version 2>/dev/null)" ]]; then
+            echo "${PKG}@${GITHUB_REF_NAME} already on npm; skipping (immutable)"
+            exit 0
+          fi
+          provenance=()
+          [[ "${PRIVATE_REPO}" == "false" ]] && provenance=(--provenance)
+          npm publish "npm-tarballs/${PKG}-${GITHUB_REF_NAME}.tgz" \
+            --access public "${provenance[@]}"
+
+  crates-io:
+    name: crates.io publish ${{ matrix.crate }}
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write } # trusted publishing
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/${{ matrix.crate }}/${{ github.ref_name }}
+    strategy:
+      # Serialized in dependency order: each crate's publish verification
+      # builds against its already-published sibling, and fail-fast stops
+      # the chain the moment a link is missing.
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        crate: [pwsh-parser, pwsh-formatter, psfmt]
+    env:
+      CRATE: ${{ matrix.crate }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Mint crates.io token (trusted publishing)
+        id: auth
+        continue-on-error: true # fall back to the long-lived secret
+        uses: rust-lang/crates-io-auth-action@v1
+      - name: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token || secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME}"
+
+          crate_status() {
+            curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 30 --retry 4 --retry-delay 5 --retry-connrefused \
+              --header "User-Agent: ${GITHUB_REPOSITORY} release.yml" \
+              "https://crates.io/api/v1/crates/${CRATE}/${version}"
+          }
+
+          # crates.io publish rate limits come back as "try again after
+          # <HTTP-date>"; honor that date instead of hammering.
+          wait_before_retry() {
+            local output="${1}" retry_at retry_epoch now_epoch sleep_for
+            if [[ "${output}" =~ try\ again\ after\ ([A-Za-z]{3},\ [0-9]{2}\ [A-Za-z]{3}\ [0-9]{4}\ [0-9]{2}:[0-9]{2}:[0-9]{2}\ GMT) ]]; then
+              retry_at="${BASH_REMATCH[1]}"
+              retry_epoch="$(date -u -d "${retry_at}" +%s)"
+              now_epoch="$(date -u +%s)"
+              sleep_for=$((retry_epoch - now_epoch + 5))
+              if (( sleep_for > 0 )); then
+                echo "wait: crates.io rate limit until ${retry_at} (${sleep_for}s)"
+                sleep "${sleep_for}"
+                return 0
+              fi
+            fi
+            echo "wait: fallback retry delay (90s)"
+            sleep 90
+          }
+
+          status="$(crate_status)"
+          if [[ "${status}" == "200" ]]; then
+            echo "skip: ${CRATE} ${version} already published (immutable)"
+            exit 0
+          fi
+          if [[ "${status}" != "404" ]]; then
+            echo "error: crates.io returned HTTP ${status} checking ${CRATE} ${version}" >&2
+            exit 1
+          fi
+
+          for attempt in 1 2 3 4 5; do
+            echo "publish: ${CRATE} ${version} (attempt ${attempt}/5)"
+            if output="$(cargo publish --locked -p "${CRATE}" 2>&1)"; then
+              printf '%s\n' "${output}"
+              # cargo already waits for index visibility, but the API can
+              # lag it; the next crate's verification needs the API too.
+              for check in 1 2 3 4 5 6 7 8 9 10; do
+                if [[ "$(crate_status)" == "200" ]]; then
+                  echo "ok: ${CRATE} ${version} is visible on crates.io"
+                  exit 0
+                fi
+                echo "wait: ${CRATE} ${version} not visible yet (check ${check}/10)"
+                sleep 15
+              done
+              echo "error: ${CRATE} ${version} accepted but never became visible" >&2
+              exit 1
+            fi
+            printf '%s\n' "${output}"
+            if [[ "$(crate_status)" == "200" ]]; then
+              echo "ok: ${CRATE} ${version} became available after publish error"
+              exit 0
+            fi
+            wait_before_retry "${output}"
+          done
+          echo "error: failed to publish ${CRATE} ${version}" >&2
+          exit 1

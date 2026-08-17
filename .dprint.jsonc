@@ -19,10 +19,10 @@
 	"sortPackageJson": { "associations": ["package.json"] },
 	"jsonSchemaSort": { "associations": ["**/schema.json", "**/*.schema.json"] },
 	// Dogfood slot: enable once the plugin ships (repo public + release),
-	// with "https://plugins.dprint.dev/kjanat/powershell-formatter-<tag>.wasm"
+	// with "https://plugins.dprint.dev/kjanat/pwsh-<tag>.wasm"
 	// in plugins. Keys below match the FormatOptions serde surface (the
 	// plugin rejects unknown keys) — see docs/configuration.md.
-	// "powershell": {
+	// "pwsh": {
 	// "braceStyle": "sameLine",
 	// "useTabs": true,
 	// "keywordCasing": "lower",

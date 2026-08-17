@@ -2,7 +2,7 @@
  * Browser entry point. The wasm is fetched relative to this module on first
  * use and the instance is cached; repeated formatting never re-instantiates.
  */
-import initWasm, * as bindings from './dist/powershell_formatter_wasm.js';
+import initWasm, * as bindings from './dist/pwsh_formatter_wasm.js';
 
 let initPromise;
 let initInput;

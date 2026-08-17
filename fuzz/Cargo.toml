@@ -1,8 +1,11 @@
 [package]
-name    = "powershell-formatter-fuzz"
-version = "0.0.0"
-edition = "2024"
-publish = false
+name       = "pwsh-formatter-fuzz"
+version    = "0.0.0"
+edition    = "2024"
+readme     = "README.md"
+keywords   = ["formatter", "fuzzing", "powershell", "testing"]
+categories = ["development-tools::testing"]
+publish    = false
 
 [package.metadata]
 cargo-fuzz = true
@@ -29,9 +32,9 @@ path  = "fuzz_targets/formatter.rs"
 test  = false
 
 [dependencies]
-libfuzzer-sys        = "0.4"
-powershell-formatter = { path = "../crates/powershell-formatter" }
-powershell-parser    = { path = "../crates/powershell-parser" }
+libfuzzer-sys  = "0.4"
+pwsh-formatter = { path = "../crates/pwsh-formatter" }
+pwsh-parser    = { path = "../crates/pwsh-parser" }
 
 [profile.release]
 debug = 1

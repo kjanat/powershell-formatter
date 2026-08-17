@@ -10,7 +10,7 @@ PowerShell installed.
 `dump-tokens.ps1` parses an input with
 `[System.Management.Automation.Language.Parser]::ParseInput` and emits a
 normalized `(category, text)` token stream as JSON. The Rust side
-([`crates/powershell-parser/tests/oracle.rs`](../crates/powershell-parser/tests/oracle.rs)) applies the same normalization
+([`crates/pwsh-parser/tests/oracle.rs`](../crates/pwsh-parser/tests/oracle.rs)) applies the same normalization
 to our lexer's output and requires the sequences to match exactly — which
 pins token boundaries and classifications simultaneously without comparing
 offsets across UTF-8/UTF-16 conventions.
@@ -39,7 +39,7 @@ canonical command/parameter casing for the commands the fixtures use from
 the *same* pwsh session, so our catalog-driven command casing is tested
 against PSSA's runspace-driven casing.
 
-[`crates/powershell-formatter/tests/pssa_parity.rs`](../crates/powershell-formatter/tests/pssa_parity.rs) maps each profile to
+[`crates/pwsh-formatter/tests/pssa_parity.rs`](../crates/pwsh-formatter/tests/pssa_parity.rs) maps each profile to
 `FormatOptions`, formats each input, and requires byte equality — plus that
 formatting the oracle's own output is a no-op (idempotence against the
 oracle, not against ourselves).
