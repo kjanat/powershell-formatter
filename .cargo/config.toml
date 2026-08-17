@@ -1,4 +1,5 @@
 [alias]
+lint        = "clippy --workspace --all-targets --all-features -- -D warnings -D clippy::all"
 wasm-plugin = "build -p dprint-plugin-pwsh --profile wasm-release --target wasm32-unknown-unknown"
 
 # No stack-size override: rustc's wasm32 default is 1 MiB, and the deepest
