@@ -19,13 +19,13 @@ every channel below. Publish steps skip versions that already exist, so a
 partially failed run is fixed by re-running it — never by mutating what
 already shipped.
 
-Publishing runs in three [deployment environments] — `mirror`, `npm`, and
+Publishing runs in three [deployment environments] — `dprint`, `npm`, and
 `crates-io` (auto-created on first run; one job per published artifact,
 each linking the versioned page it published). Configure protection rules
 there if releases should wait for approval, and prefer scoping the secrets
 to their environment over repo-level:
 
-- `mirror`: `DPRINT_PLUGIN_PWSH` (fine-grained PAT for the mirror repo;
+- `dprint`: `DPRINT_PLUGIN_PWSH` (fine-grained PAT for the mirror repo;
   see below).
 - `npm`: `NPM_TOKEN` (automation token that can publish both packages;
   provenance is attached automatically while the repo is public).

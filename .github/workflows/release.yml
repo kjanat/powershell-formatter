@@ -105,7 +105,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     environment:
-      name: mirror
+      name: dprint
       url: https://github.com/kjanat/dprint-plugin-pwsh/releases/tag/${{ github.ref_name }}
     env:
       GH_TOKEN: ${{ secrets.DPRINT_PLUGIN_PWSH }}
