@@ -1,0 +1,111 @@
+name: Release
+
+# Pushing a bare-semver tag (dash-free, equal to workspace.package.version)
+# publishes every distribution channel from that one commit:
+#   1. GitHub release on the artifact mirror kjanat/dprint-plugin-pwsh
+#      (plugin.wasm + schema.json) — serves `dprint add kjanat/pwsh`.
+#   2. npm pwsh-formatter — the wasm-bindgen rich API.
+#   3. npm dprint-plugin-pwsh — the plugin.wasm carrier.
+# Every channel is immutable (npm, GitHub releases, the plugins.dprint.dev
+# cache): a bad release is fixed by bumping the version and tagging again,
+# never by replacing artifacts. Publish steps skip already-published
+# versions so a partially failed run can simply be re-run.
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+  id-token: write # npm provenance (attached only while the repo is public)
+
+env: { CARGO_TERM_COLOR: always }
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: Verify the tag matches the workspace version
+        run: |
+          version="$(sed -n 's/^version *= *"\([^"]*\)"$/\1/p' Cargo.toml | head -1)"
+          if [[ "${GITHUB_REF_NAME}" != "${version}" ]]; then
+            echo "tag ${GITHUB_REF_NAME} != workspace.package.version ${version}" >&2
+            exit 1
+          fi
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: latest
+          registry-url: https://registry.npmjs.org
+      - uses: kjanat/install-dprint@v2
+      - uses: cargo-bins/cargo-binstall@main
+      - name: Install the pinned wasm-bindgen-cli
+        run: |
+          pinned="$(sed -n 's/^wasm-bindgen *= *"=\([0-9.]*\)"$/\1/p' Cargo.toml)"
+          cargo binstall --no-confirm wasm-bindgen-cli --version "${pinned}" --locked
+      - name: Build plugin.wasm and schema.json
+        run: |
+          cargo build -p dprint-plugin-powershell --profile wasm-release \
+            --target wasm32-unknown-unknown
+          cargo run -p dprint-plugin-powershell --features schema --bin generate-schema
+          # The committed schema must match the tagged source, and its $id
+          # must embed exactly this version (proves CARGO_PKG_VERSION — and
+          # so every URL baked into the plugin — agrees with the tag).
+          git diff --exit-code crates/dprint-plugin-powershell/deployment/schema.json
+          grep -Fq "https://plugins.dprint.dev/kjanat/pwsh/${GITHUB_REF_NAME}/schema.json" \
+            crates/dprint-plugin-powershell/deployment/schema.json
+          mkdir release-assets
+          cp target/wasm32-unknown-unknown/wasm-release/dprint_plugin_powershell.wasm \
+            release-assets/plugin.wasm
+          cp crates/dprint-plugin-powershell/deployment/schema.json release-assets/schema.json
+          # Same budget CI enforces; a release must never ship past it.
+          [[ "$(stat -c%s release-assets/plugin.wasm)" -le 1048576 ]]
+      - name: dprint plugin end-to-end
+        run: crates/dprint-plugin-powershell/tests/e2e.sh
+      - name: Build and test the npm packages
+        run: |
+          (cd packages/formatter && bash build.sh && npm test)
+          (cd packages/dprint-plugin && bash build.sh && npm ci && npm test)
+      - name: Publish the mirror release
+        env:
+          GH_TOKEN: ${{ secrets.DPRINT_PLUGIN_PWSH }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "${tag}" --repo kjanat/dprint-plugin-pwsh >/dev/null 2>&1; then
+            echo "mirror release ${tag} already exists; leaving it untouched (immutable)"
+            exit 0
+          fi
+          sha_wasm="$(sha256sum release-assets/plugin.wasm | cut -d' ' -f1)"
+          sha_schema="$(sha256sum release-assets/schema.json | cut -d' ' -f1)"
+          gh release create "${tag}" \
+            release-assets/plugin.wasm release-assets/schema.json \
+            --repo kjanat/dprint-plugin-pwsh --title "${tag}" --notes "$(cat <<EOF
+          Install: \`dprint add kjanat/pwsh\`
+
+          Built from [kjanat/powershell-formatter@${tag}](https://github.com/kjanat/powershell-formatter/tree/${tag}).
+
+          sha256:
+          - \`plugin.wasm\`: \`${sha_wasm}\`
+          - \`schema.json\`: \`${sha_schema}\`
+          EOF
+            )"
+      - name: Publish the npm packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PRIVATE_REPO: ${{ github.event.repository.private }}
+        run: |
+          provenance=()
+          [[ "${PRIVATE_REPO}" == "false" ]] && provenance=(--provenance)
+          for dir in packages/formatter packages/dprint-plugin; do
+            pushd "${dir}" >/dev/null
+            name="$(node -p "require('./package.json').name")"
+            npm version "${GITHUB_REF_NAME}" --no-git-tag-version
+            if [[ -n "$(npm view "${name}@${GITHUB_REF_NAME}" version 2>/dev/null)" ]]; then
+              echo "${name}@${GITHUB_REF_NAME} already on npm; skipping (immutable)"
+            else
+              npm publish --access public "${provenance[@]}"
+            fi
+            popd >/dev/null
+          done

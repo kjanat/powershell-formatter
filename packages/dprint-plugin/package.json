@@ -1,40 +1,40 @@
 {
-	"name": "pwsh-formatter",
+	"name": "dprint-plugin-pwsh",
 	"version": "0.0.0",
-	"description": "Fast, standalone PowerShell formatter for browsers and Node.js (WebAssembly, no PowerShell required)",
+	"description": "PowerShell dprint plugin (plugin.wasm) packaged for @dprint/formatter hosts",
 	"keywords": [
 		"powershell",
 		"pwsh",
 		"formatter",
-		"wasm",
-		"psscriptanalyzer"
+		"dprint",
+		"wasm"
 	],
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/kjanat/powershell-formatter.git",
-		"directory": "packages/formatter"
+		"directory": "packages/dprint-plugin"
 	},
 	"license": "MIT",
 	"type": "module",
 	"exports": {
 		".": {
 			"types": "./index.d.ts",
-			"node": "./index.node.js",
 			"default": "./index.js"
 		}
 	},
-	"main": "./index.node.js",
+	"main": "./index.js",
 	"types": "./index.d.ts",
 	"files": [
 		"index.js",
-		"index.node.js",
 		"index.d.ts",
-		"dist/powershell_formatter_wasm.js",
-		"dist/powershell_formatter_wasm_bg.wasm"
+		"plugin.wasm"
 	],
 	"scripts": {
 		"build": "./build.sh",
-		"test": "node --test test/package.test.mjs"
+		"test": "node --test"
+	},
+	"devDependencies": {
+		"@dprint/formatter": "^0.5.1"
 	},
 	"engines": {
 		"node": ">=18"

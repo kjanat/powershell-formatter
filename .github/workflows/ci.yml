@@ -74,6 +74,9 @@ jobs:
       - name: Build and test the npm package
         working-directory: packages/formatter
         run: bash build.sh && npm test
+      - name: Build and test the dprint npm package
+        working-directory: packages/dprint-plugin
+        run: bash build.sh && npm ci && npm test
       - name: Report artifact sizes and enforce budget
         run: |
           set -euo pipefail

@@ -47,7 +47,7 @@ buffer is never corrupted.
 **Browser / Node.js**
 
 ```js
-import { format } from '@kjanat/powershell-formatter';
+import { format } from 'pwsh-formatter';
 
 const result = await format("if($x){'y'}", { indentWidth: 2 });
 result.text; // "if ($x) {'y'}"
