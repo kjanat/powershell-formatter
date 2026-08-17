@@ -65,7 +65,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version: latest }
-      - uses: kjanat/install-dprint@fc7e4f62965bab609a936c9e58ad4893bb9da961 # v2 (v2.1)
+      - uses: kjanat/install-dprint@v2
       - uses: cargo-bins/cargo-binstall@b629f84e79e8fbc4f76616a8efd340f3ea605cab # main, 2026-08-17
       - name: Install tools
         run: cargo binstall --no-confirm wasm-bindgen-cli --version 0.2.127 --locked
