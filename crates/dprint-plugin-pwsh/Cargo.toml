@@ -4,8 +4,11 @@ version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
 description            = "dprint Wasm plugin that formats PowerShell"
+readme                 = "README.md"
 repository.workspace   = true
 license.workspace      = true
+keywords               = ["dprint", "formatter", "plugin", "powershell", "wasm"]
+categories             = ["development-tools", "text-processing", "web-programming::wasm"]
 # Not a library: ships as plugin.wasm on GitHub releases.
 publish                = false
 

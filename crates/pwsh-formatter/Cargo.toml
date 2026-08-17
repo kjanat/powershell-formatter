@@ -4,8 +4,11 @@ version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
 description            = "Standalone PowerShell formatter reproducing PSScriptAnalyzer's Invoke-Formatter"
+readme                 = "README.md"
 repository.workspace   = true
 license.workspace      = true
+keywords               = ["formatter", "powershell", "pretty-printing", "psscriptanalyzer"]
+categories             = ["development-tools", "text-processing"]
 
 [[bench]]
 harness = false

@@ -4,8 +4,11 @@ version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
 description            = "wasm-bindgen bindings for pwsh-formatter (browser/Node package)"
+readme                 = "README.md"
 repository.workspace   = true
 license.workspace      = true
+keywords               = ["formatter", "javascript", "powershell", "wasm", "webassembly"]
+categories             = ["development-tools", "web-programming::wasm"]
 # Not a library: ships as the wasm inside packages/formatter on npm.
 publish                = false
 
