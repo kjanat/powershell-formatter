@@ -125,7 +125,12 @@ jobs:
         run: |
           echo "Running fuzz target '${target}' for ${seconds} seconds"
           echo "::group::${target}"
-          cargo +nightly fuzz run "${target}" -- "-max_total_time=${seconds}"
+          # Prebuilt cargo-fuzz is a musl binary and defaults the fuzz
+          # target triple to its own; sanitizers refuse static libc, so
+          # pin the build to the toolchain's host triple.
+          cargo +nightly fuzz run "${target}" \
+            --target "$(rustc +nightly --print host-tuple)" \
+            -- "-max_total_time=${seconds}"
           echo "::endgroup::"
 
   powershell-oracles:
