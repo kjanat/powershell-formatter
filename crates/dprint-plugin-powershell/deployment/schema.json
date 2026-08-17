@@ -1,5 +1,5 @@
 {
-  "$id": "https://plugins.dprint.dev/kjanat/powershell-formatter/0.0.0/schema.json",
+  "$id": "https://plugins.dprint.dev/kjanat/pwsh/0.0.0/schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "BraceStyle": {
