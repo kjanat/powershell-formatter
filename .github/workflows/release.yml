@@ -145,20 +145,16 @@ jobs:
       url: https://www.npmjs.com/package/${{ matrix.pkg }}/v/${{ github.ref_name }}
     strategy:
       fail-fast: false
-      matrix:
-        pkg: [pwsh-formatter, dprint-plugin-pwsh]
-    env:
-      PKG: ${{ matrix.pkg }}
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false }}
+      matrix: { pkg: [pwsh-formatter, dprint-plugin-pwsh] }
     steps:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: latest
-          registry-url: https://registry.npmjs.org
+        with: { node-version: latest, registry-url: https://registry.npmjs.org }
       - uses: actions/download-artifact@v8
         with: { name: npm-tarballs, path: npm-tarballs }
       - name: npm publish (${{ matrix.pkg }})
+        env:
+          PKG: ${{ matrix.pkg }}
+          NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false }}
         run: |
           if [[ -n "$(npm view "${PKG}@${GITHUB_REF_NAME}" version 2>/dev/null)" ]]; then
             echo "${PKG}@${GITHUB_REF_NAME} already on npm; skipping (immutable)"; exit 0
@@ -179,8 +175,7 @@ jobs:
       # the chain the moment a link is missing.
       fail-fast: true
       max-parallel: 1
-      matrix:
-        crate: [pwsh-parser, pwsh-formatter, psfmt]
+      matrix: { crate: [pwsh-parser, pwsh-formatter, psfmt] }
     env:
       CRATE: ${{ matrix.crate }}
     steps:
@@ -190,11 +185,9 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Mint crates.io token (trusted publishing)
         id: auth
-        continue-on-error: true # fall back to the long-lived secret
         uses: rust-lang/crates-io-auth-action@v1
       - name: cargo publish
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token || secrets.CARGO_REGISTRY_TOKEN }}
+        env: { CARGO_REGISTRY_TOKEN: "${{ steps.auth.outputs.token }}" }
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME}"
