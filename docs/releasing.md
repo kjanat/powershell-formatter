@@ -40,9 +40,9 @@ Secrets it needs: `DPRINT_PLUGIN_PWSH` (mirror release; see below) and
   Actions secret — a fine-grained PAT scoped to that repo with
   `Contents: read and write`).
 - The release asset **must** be named `plugin.wasm` (copy
-  `target/wasm32-unknown-unknown/wasm-release/dprint_plugin_powershell.wasm`).
+  `target/wasm32-unknown-unknown/wasm-release/dprint_plugin_pwsh.wasm`).
 - Regenerate and publish [`schema.json`]
-  (`cargo run -p dprint-plugin-powershell --features schema --bin generate-schema`);
+  (`cargo run -p dprint-plugin-pwsh --features schema --bin generate-schema`);
   its `$id` embeds the version.
 - The canonical public identity is the
   [plugins.dprint.dev](https://github.com/dprint/plugins) shorthand
@@ -55,7 +55,7 @@ Secrets it needs: `DPRINT_PLUGIN_PWSH` (mirror release; see below) and
     included; no hand-built `latest.json` asset is needed.
     They start resolving with the mirror's first release (the proxy fetches
     from GitHub releases, so an empty or private repo yields 404s).
-- The mirror was created as `dprint-plugin-powershell` and renamed, so
+- The mirror was created as `dprint-plugin-pwsh` and renamed, so
   GitHub redirects the old name. That alias is an **undocumented courtesy
   only**: `kjanat/powershell` must never appear in anything durable —
   embedded URLs, docs, registry entries, or release chains — because the
@@ -123,7 +123,7 @@ CI enforces a 1 MB raw budget on both wasm artifacts (see [`ci.yml`]).
 [`packages/dprint-plugin`]: ../packages/dprint-plugin
 [`packages/dprint-plugin/build.sh`]: ../packages/dprint-plugin/build.sh
 [`@dprint/formatter`]: https://github.com/dprint/js-formatter
-[`schema.json`]: ../crates/dprint-plugin-powershell/deployment/schema.json
+[`schema.json`]: ../crates/dprint-plugin-pwsh/deployment/schema.json
 [`tests/powershell-oracle/fixtures/VERSION`]: ../tests/powershell-oracle/fixtures/VERSION
 [`tests/pssa-parity/expected/VERSION`]: ../tests/pssa-parity/expected/VERSION
 [`ci.yml`]: ../.github/workflows/ci.yml

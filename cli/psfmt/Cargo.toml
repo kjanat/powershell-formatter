@@ -8,7 +8,7 @@ repository.workspace   = true
 license.workspace      = true
 
 [dependencies]
-powershell-formatter.path = "../../crates/powershell-formatter"
+pwsh-formatter.path = "../../crates/pwsh-formatter"
 serde_json.workspace      = true
 
 [lints]

@@ -34,7 +34,7 @@ from the npm CDN mirrors, or offline from an installed `node_modules`:
 
 ```jsonc
 {
-	"powershell": {},
+	"pwsh": {},
 	"plugins": [
 		// pick one:
 		"https://cdn.jsdelivr.net/npm/dprint-plugin-pwsh@x.y.z/plugin.wasm",

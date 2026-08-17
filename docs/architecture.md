@@ -1,17 +1,17 @@
 # Architecture
 
 ```text
-   powershell-parser
+   pwsh-parser
            ▲
            │
-  powershell-formatter
+  pwsh-formatter
     ▲      ▲       ▲
     │      │       │
 psfmt   dprint   JS/WASM
        plugin    package
 ```
 
-## powershell-parser
+## pwsh-parser
 
 A **lossless, formatter-oriented** scanner plus shallow structural parser.
 Every input byte belongs to exactly one token; concatenating token texts
@@ -37,7 +37,7 @@ array / bracket), a symmetric open↔close match table, statement boundaries,
 and statement classification. There is deliberately no execution-grade AST:
 the formatter needs nesting and boundaries, not semantics.
 
-## powershell-formatter
+## pwsh-formatter
 
 **Parse once, format once.** The engine splits the token stream into
 significant tokens and the *gaps* (trivia runs) between them. Formatting
@@ -89,10 +89,10 @@ diagnostics.
 ## Adapters
 
 - [`cli/psfmt`](../cli/psfmt) — argument parsing, file I/O (atomic `--write`), exit codes.
-- [`crates/dprint-plugin-powershell`](../crates/dprint-plugin-powershell) — dprint Wasm ABI + config resolution.
+- [`crates/dprint-plugin-pwsh`](../crates/dprint-plugin-pwsh) — dprint Wasm ABI + config resolution.
   Known config keys are derived from `FormatOptions`' own serde surface, so
   the plugin cannot drift from the core.
-- [`crates/powershell-formatter-wasm`](../crates/powershell-formatter-wasm) + [`packages/formatter`](../packages/formatter) — wasm-bindgen
+- [`crates/pwsh-formatter-wasm`](../crates/pwsh-formatter-wasm) + [`packages/formatter`](../packages/formatter) — wasm-bindgen
   boundary and the npm package (browser + Node entries).
 
 Adapters contain no formatting policy.

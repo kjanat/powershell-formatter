@@ -47,23 +47,23 @@ jobs:
           cargo binstall --no-confirm wasm-bindgen-cli --version "${pinned}" --locked
       - name: Build plugin.wasm and schema.json
         run: |
-          cargo build -p dprint-plugin-powershell --profile wasm-release \
+          cargo build -p dprint-plugin-pwsh --profile wasm-release \
             --target wasm32-unknown-unknown
-          cargo run -p dprint-plugin-powershell --features schema --bin generate-schema
+          cargo run -p dprint-plugin-pwsh --features schema --bin generate-schema
           # The committed schema must match the tagged source, and its $id
           # must embed exactly this version (proves CARGO_PKG_VERSION — and
           # so every URL baked into the plugin — agrees with the tag).
-          git diff --exit-code crates/dprint-plugin-powershell/deployment/schema.json
+          git diff --exit-code crates/dprint-plugin-pwsh/deployment/schema.json
           grep -Fq "https://plugins.dprint.dev/kjanat/pwsh/${GITHUB_REF_NAME}/schema.json" \
-            crates/dprint-plugin-powershell/deployment/schema.json
+            crates/dprint-plugin-pwsh/deployment/schema.json
           mkdir release-assets
-          cp target/wasm32-unknown-unknown/wasm-release/dprint_plugin_powershell.wasm \
+          cp target/wasm32-unknown-unknown/wasm-release/dprint_plugin_pwsh.wasm \
             release-assets/plugin.wasm
-          cp crates/dprint-plugin-powershell/deployment/schema.json release-assets/schema.json
+          cp crates/dprint-plugin-pwsh/deployment/schema.json release-assets/schema.json
           # Same budget CI enforces; a release must never ship past it.
           [[ "$(stat -c%s release-assets/plugin.wasm)" -le 1048576 ]]
       - name: dprint plugin end-to-end
-        run: crates/dprint-plugin-powershell/tests/e2e.sh
+        run: crates/dprint-plugin-pwsh/tests/e2e.sh
       - name: Build and test the npm packages
         run: |
           (cd packages/formatter && bash build.sh && npm test)

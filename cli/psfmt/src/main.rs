@@ -14,7 +14,7 @@ use std::io::{self, Read as _, Write as _};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use powershell_formatter::{
+use pwsh_formatter::{
     Diagnostic, FormatOptions, FormatRange, FormatResult, JsonCatalog, format, format_range,
     format_range_with_catalog, format_with_catalog,
 };

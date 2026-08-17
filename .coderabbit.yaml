@@ -15,14 +15,14 @@ reviews:
     - "!tests/corpus/files/**"
     - "!tests/powershell-oracle/inputs/upstream-*.ps1"
     # schemars output, drift-checked by the schema-drift CI job.
-    - "!crates/dprint-plugin-powershell/deployment/schema.json"
+    - "!crates/dprint-plugin-pwsh/deployment/schema.json"
     # Proptest's own failure-seed ledger.
-    - "!crates/powershell-formatter/tests/properties.proptest-regressions"
+    - "!crates/pwsh-formatter/tests/properties.proptest-regressions"
     - "!**/dist/**"
     - "!fuzz/corpus/**"
 
   path_instructions:
-    - path: crates/powershell-parser/src/**
+    - path: crates/pwsh-parser/src/**
       instructions: >-
         This scanner deliberately mirrors PowerShell's own parser-driven
         tokenizer, including behaviour that looks wrong in isolation
@@ -33,7 +33,7 @@ reviews:
         documentation says the tokenizer should do; flag a divergence only when
         you can point at a fixture or a concrete input where we disagree with
         pwsh itself.
-    - path: crates/powershell-formatter/src/**
+    - path: crates/pwsh-formatter/src/**
       instructions: >-
         Formatting behaviour targets the *shipped* PSScriptAnalyzer 1.25.0
         binary, which differs from PSScriptAnalyzer's master sources in several

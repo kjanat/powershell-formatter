@@ -1,5 +1,5 @@
 [package]
-name    = "powershell-formatter-fuzz"
+name    = "pwsh-formatter-fuzz"
 version = "0.0.0"
 edition = "2024"
 publish = false
@@ -30,8 +30,8 @@ test  = false
 
 [dependencies]
 libfuzzer-sys        = "0.4"
-powershell-formatter = { path = "../crates/powershell-formatter" }
-powershell-parser    = { path = "../crates/powershell-parser" }
+pwsh-formatter = { path = "../crates/pwsh-formatter" }
+pwsh-parser    = { path = "../crates/pwsh-parser" }
 
 [profile.release]
 debug = 1

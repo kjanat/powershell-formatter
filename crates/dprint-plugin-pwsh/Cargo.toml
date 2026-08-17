@@ -1,0 +1,34 @@
+[package]
+name                   = "dprint-plugin-pwsh"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+description            = "dprint Wasm plugin that formats PowerShell"
+repository.workspace   = true
+license.workspace      = true
+# Not a library: ships as plugin.wasm on GitHub releases.
+publish                = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name              = "generate-schema"
+path              = "src/bin/generate_schema.rs"
+required-features = ["schema"]
+
+[dependencies]
+pwsh-formatter.path = "../pwsh-formatter"
+
+dprint-core.workspace = true
+serde.workspace       = true
+serde_json.workspace  = true
+
+json-schema-sort = { workspace = true, optional = true }
+schemars         = { workspace = true, optional = true }
+
+[features]
+schema = ["dep:json-schema-sort", "dep:schemars", "pwsh-formatter/schema"]
+
+[lints]
+workspace = true

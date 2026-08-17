@@ -1,5 +1,5 @@
 [alias]
-wasm-plugin = "build -p dprint-plugin-powershell --profile wasm-release --target wasm32-unknown-unknown"
+wasm-plugin = "build -p dprint-plugin-pwsh --profile wasm-release --target wasm32-unknown-unknown"
 
 # No stack-size override: rustc's wasm32 default is 1 MiB, and the deepest
 # call chain we have — structural parsing, bounded at MAX_DEPTH = 1024

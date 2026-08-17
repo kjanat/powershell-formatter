@@ -3,7 +3,7 @@
  * the API stays async to match the browser entry.
  */
 import { readFileSync } from 'node:fs';
-import * as bindings from './dist/powershell_formatter_wasm.js';
+import * as bindings from './dist/pwsh_formatter_wasm.js';
 
 let initialized = false;
 let initInput;
@@ -20,7 +20,7 @@ function ensureInitialized(input) {
 	}
 	const module = input === undefined
 		? readFileSync(
-			new URL('./dist/powershell_formatter_wasm_bg.wasm', import.meta.url),
+			new URL('./dist/pwsh_formatter_wasm_bg.wasm', import.meta.url),
 		)
 		: input;
 	// `initialized` is only set after initSync returns, so a failed load

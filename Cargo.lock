@@ -130,12 +130,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "dprint-plugin-powershell"
+name = "dprint-plugin-pwsh"
 version = "0.0.0"
 dependencies = [
  "dprint-core",
  "json-schema-sort",
- "powershell-formatter",
+ "pwsh-formatter",
  "schemars",
  "serde",
  "serde_json",
@@ -323,37 +323,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
-name = "powershell-formatter"
-version = "0.0.0"
-dependencies = [
- "divan",
- "powershell-parser",
- "proptest",
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "powershell-formatter-wasm"
-version = "0.0.0"
-dependencies = [
- "powershell-formatter",
- "serde",
- "serde-wasm-bindgen",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "powershell-parser"
-version = "0.0.0"
-dependencies = [
- "bitflags",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "ppv-lite86"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -394,7 +363,38 @@ dependencies = [
 name = "psfmt"
 version = "0.0.0"
 dependencies = [
- "powershell-formatter",
+ "pwsh-formatter",
+ "serde_json",
+]
+
+[[package]]
+name = "pwsh-formatter"
+version = "0.0.0"
+dependencies = [
+ "divan",
+ "proptest",
+ "pwsh-parser",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "pwsh-formatter-wasm"
+version = "0.0.0"
+dependencies = [
+ "pwsh-formatter",
+ "serde",
+ "serde-wasm-bindgen",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "pwsh-parser"
+version = "0.0.0"
+dependencies = [
+ "bitflags",
+ "serde",
  "serde_json",
 ]
 

@@ -51,8 +51,8 @@ jobs:
         with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - run: cargo run -p dprint-plugin-powershell --features schema --bin generate-schema
-      - run: git diff --exit-code crates/dprint-plugin-powershell/deployment/schema.json
+      - run: cargo run -p dprint-plugin-pwsh --features schema --bin generate-schema
+      - run: git diff --exit-code crates/dprint-plugin-pwsh/deployment/schema.json
 
   wasm:
     name: wasm builds + dprint e2e + node package
@@ -70,7 +70,7 @@ jobs:
       - name: Install tools
         run: cargo binstall --no-confirm wasm-bindgen-cli --version 0.2.127 --locked
       - name: dprint plugin end-to-end
-        run: crates/dprint-plugin-powershell/tests/e2e.sh
+        run: crates/dprint-plugin-pwsh/tests/e2e.sh
       - name: Build and test the npm package
         working-directory: packages/formatter
         run: bash build.sh && npm test
@@ -80,8 +80,8 @@ jobs:
       - name: Report artifact sizes and enforce budget
         run: |
           set -euo pipefail
-          plugin='target/wasm32-unknown-unknown/wasm-release/dprint_plugin_powershell.wasm'
-          browser='packages/formatter/dist/powershell_formatter_wasm_bg.wasm'
+          plugin='target/wasm32-unknown-unknown/wasm-release/dprint_plugin_pwsh.wasm'
+          browser='packages/formatter/dist/pwsh_formatter_wasm_bg.wasm'
           for f in "${plugin}" "${browser}"; do
             raw="$(stat -c%s "${f}")"
             gz="$(gzip -9 -c "${f}" | wc -c)"
@@ -153,8 +153,8 @@ jobs:
           ./tests/pssa-parity/generate-catalog.ps1
       - name: Differential tests against freshly generated fixtures
         run: |
-          cargo test -p powershell-parser    --test oracle
-          cargo test -p powershell-formatter --test pssa_parity
+          cargo test -p pwsh-parser    --test oracle
+          cargo test -p pwsh-formatter --test pssa_parity
       - name: Fail if committed fixtures drifted from the pinned versions
         # --exit-code, or the step reports drift and passes anyway. The pwsh
         # VERSION stamp is excluded: the runner's patch release is not ours

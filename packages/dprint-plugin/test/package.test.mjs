@@ -1,6 +1,6 @@
 // Tests the assembled package through @dprint/formatter — the same host
 // stack npm consumers use. Run `./build.sh` first (CI does); `node --test
-// test/` executes these. Mirrors crates/dprint-plugin-powershell/tests/e2e.sh,
+// test/` executes these. Mirrors crates/dprint-plugin-pwsh/tests/e2e.sh,
 // which exercises the identical artifact through the dprint CLI.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -19,8 +19,8 @@ const formatter = createFromBuffer(getBuffer());
 
 test('plugin identity and file matching', () => {
 	const info = formatter.getPluginInfo();
-	assert.equal(info.name, 'dprint-plugin-powershell');
-	assert.equal(info.configKey, 'powershell');
+	assert.equal(info.name, 'dprint-plugin-pwsh');
+	assert.equal(info.configKey, 'pwsh');
 	// File matching comes out of config resolution, so it needs a config.
 	formatter.setConfig({}, {});
 	assert.deepEqual(formatter.getFileMatchingInfo().fileExtensions, [

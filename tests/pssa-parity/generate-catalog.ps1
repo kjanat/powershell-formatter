@@ -1,5 +1,5 @@
 # Dumps canonical command/parameter casing for the commands the parity
-# fixtures use, as a JSON catalog consumable by powershell_formatter's
+# fixtures use, as a JSON catalog consumable by pwsh_formatter's
 # JsonCatalog. Run: pwsh -NoProfile -File generate-catalog.ps1
 Set-StrictMode -Version 3
 $ErrorActionPreference = 'Stop'

@@ -3,7 +3,7 @@
 # Used to (re)generate the fixtures under fixtures/. The normalized categories
 # deliberately blur distinctions the formatter does not need (see
 # docs/oracles.md); the Rust test in
-# crates/powershell-parser/tests/oracle.rs applies the same normalization to
+# crates/pwsh-parser/tests/oracle.rs applies the same normalization to
 # the Rust lexer's output and compares the two streams.
 #
 # Usage:

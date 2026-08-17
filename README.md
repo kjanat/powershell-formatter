@@ -39,7 +39,7 @@ buffer is never corrupted.
 
 ```jsonc
 {
-	"powershell": { "indentWidth": 4, "braceStyle": "sameLine" },
+	"pwsh": { "indentWidth": 4, "braceStyle": "sameLine" },
 	"plugins": ["<url-or-path-to>/plugin.wasm"]
 }
 ```
@@ -82,7 +82,7 @@ More: [architecture](docs/architecture.md) ·
 
 ## Performance
 
-Measured on x86_64-linux (divan benchmarks, `cargo bench -p powershell-formatter`):
+Measured on x86_64-linux (divan benchmarks, `cargo bench -p pwsh-formatter`):
 
 | Input                       | Full format | Throughput |
 | --------------------------- | ----------- | ---------- |
@@ -110,10 +110,10 @@ wasm 188 KB (74 KB gz); npm tarball 82 KB.
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace                 # unit + oracle + parity + corpus + property
-crates/dprint-plugin-powershell/tests/e2e.sh   # real dprint end-to-end
+crates/dprint-plugin-pwsh/tests/e2e.sh   # real dprint end-to-end
 packages/formatter/build.sh && (cd packages/formatter && npm test)
 cargo +nightly fuzz run formatter      # see fuzz/README.md
-cargo bench -p powershell-formatter
+cargo bench -p pwsh-formatter
 ```
 
 Regenerating oracle fixtures needs `pwsh` + PSScriptAnalyzer (pinned

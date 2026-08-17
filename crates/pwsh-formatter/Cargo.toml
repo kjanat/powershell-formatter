@@ -1,0 +1,31 @@
+[package]
+name                   = "pwsh-formatter"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+description            = "Standalone PowerShell formatter reproducing PSScriptAnalyzer's Invoke-Formatter"
+repository.workspace   = true
+license.workspace      = true
+
+[[bench]]
+harness = false
+name    = "formatting"
+
+[dependencies]
+pwsh-parser.path = "../pwsh-parser"
+
+schemars   = { workspace = true, optional = true }
+serde      = { workspace = true, features = ["derive"], optional = true }
+serde_json = { workspace = true, optional = true }
+
+[dev-dependencies]
+divan.workspace    = true
+proptest.workspace = true
+
+[features]
+default = ["serde"]
+schema  = ["dep:schemars", "serde"]
+serde   = ["dep:serde", "dep:serde_json"]
+
+[lints]
+workspace = true

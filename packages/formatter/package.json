@@ -29,8 +29,8 @@
 		"index.js",
 		"index.node.js",
 		"index.d.ts",
-		"dist/powershell_formatter_wasm.js",
-		"dist/powershell_formatter_wasm_bg.wasm"
+		"dist/pwsh_formatter_wasm.js",
+		"dist/pwsh_formatter_wasm_bg.wasm"
 	],
 	"scripts": {
 		"build": "./build.sh",
