@@ -14,6 +14,7 @@ pub struct Span {
 impl Span {
     #[must_use]
     pub const fn new(start: usize, end: usize) -> Self {
+        debug_assert!(start <= end, "inverted span");
         Self { start, end }
     }
 
@@ -39,14 +40,17 @@ impl Span {
         self.start <= offset && offset < self.end
     }
 
-    /// True when the two spans share at least one byte, or when either span is
-    /// empty and located inside the other.
+    /// True when the two spans share at least one byte, or when an empty
+    /// span (a caret position) sits inside the other — its start boundary
+    /// included — or coincides with another empty span.
     #[must_use]
     pub const fn overlaps(&self, other: &Span) -> bool {
-        self.start < other.end && other.start < self.end
-            || self.start == other.start
-            || (other.is_empty() && self.contains(other.start))
-            || (self.is_empty() && other.contains(self.start))
+        match (self.is_empty(), other.is_empty()) {
+            (true, true) => self.start == other.start,
+            (true, false) => other.contains(self.start),
+            (false, true) => self.contains(other.start),
+            (false, false) => self.start < other.end && other.start < self.end,
+        }
     }
 
     #[must_use]

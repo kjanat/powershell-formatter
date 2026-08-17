@@ -428,14 +428,15 @@ impl<'a> Builder<'a> {
                 top.stmt_first = Some(i as u32);
                 top.stmt_kind = match kind {
                     TokenKind::Keyword(kw) => StatementKind::KeywordConstruct(kw),
-                    TokenKind::Variable | TokenKind::SplattedVariable => {
-                        // Assignment if an `=`-family operator appears before
-                        // any pipe/semicolon at this nesting level.
-                        StatementKind::Pipeline
-                    }
                     _ => StatementKind::Pipeline,
                 };
             }
+            // A statement is an Assignment when an `=`-family operator token
+            // appears at its nesting level. The context sensitivity lives in
+            // the lexer, mirroring pwsh's own tokenizer: `=` in
+            // command-argument position scans as a Generic argument (so
+            // `foo | bar = 1` stays a Pipeline), and Operator(Assignment)
+            // only exists where pwsh reads an assignment operator.
             if kind == TokenKind::Operator(crate::token::OperatorKind::Assignment)
                 && top.stmt_kind == StatementKind::Pipeline
             {
@@ -537,6 +538,50 @@ mod tests {
         let stmt = child.statements[0];
         assert!(!r.tokens[stmt.last as usize].kind.is_trivia());
         assert_eq!(stmt.last, stmt.first);
+    }
+
+    /// The assignment rule delegates context to the lexer: `=` in
+    /// command-argument position is a Generic token (pinned differentially
+    /// against pwsh by the oracle suite), so only a real assignment
+    /// operator promotes a statement.
+    #[test]
+    fn assignment_classification_follows_the_lexer() {
+        // Command-argument `=` is not an operator; the pipeline stays one.
+        let r = parse("foo | bar = 1");
+        assert_eq!(r.root.statements[0].kind, StatementKind::Pipeline);
+        assert!(
+            !r.tokens
+                .iter()
+                .any(|t| t.kind == TokenKind::Operator(crate::token::OperatorKind::Assignment)),
+            "command-mode `=` must scan as an argument, not an operator"
+        );
+
+        // Real assignment operators promote, regardless of what follows.
+        for src in ["$x = foo | bar", "@splat = 1"] {
+            let r = parse(src);
+            assert_eq!(
+                r.root.statements[0].kind,
+                StatementKind::Assignment,
+                "{src}"
+            );
+        }
+
+        // Statements split at `;` classify independently.
+        let r = parse("foo; $y = 1");
+        let kinds: Vec<StatementKind> = r.root.statements.iter().map(|s| s.kind).collect();
+        assert_eq!(kinds, [StatementKind::Pipeline, StatementKind::Assignment]);
+
+        // Hashtable entries are assignments of their own nesting level.
+        let r = parse("@{ a = 1; b = 2 }");
+        let entries = &r.root.children[0].statements;
+        assert_eq!(entries.len(), 2);
+        assert!(entries.iter().all(|s| s.kind == StatementKind::Assignment));
+
+        // `foo | $x = 1` is a pwsh parse error (assignment cannot be a
+        // pipeline element); with no valid reading to preserve, the token
+        // is taken at face value and the statement classifies Assignment.
+        let r = parse("foo | $x = 1");
+        assert_eq!(r.root.statements[0].kind, StatementKind::Assignment);
     }
 
     #[test]
