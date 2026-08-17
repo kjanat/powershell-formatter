@@ -34,7 +34,7 @@
 	],
 	"scripts": {
 		"build": "./build.sh",
-		"test": "node --test test/package.test.mjs"
+		"test": "node --test"
 	},
 	"engines": {
 		"node": ">=18"
