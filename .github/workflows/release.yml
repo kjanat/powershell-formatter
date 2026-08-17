@@ -150,7 +150,7 @@ jobs:
     env:
       PKG: ${{ matrix.pkg }}
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      PRIVATE_REPO: ${{ github.event.repository.private }}
+      NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false }}
     steps:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -158,18 +158,12 @@ jobs:
           registry-url: https://registry.npmjs.org
       - uses: actions/download-artifact@v8
         with: { name: npm-tarballs, path: npm-tarballs }
-      - name: npm publish
+      - name: npm publish (${{ matrix.pkg }})
         run: |
           if [[ -n "$(npm view "${PKG}@${GITHUB_REF_NAME}" version 2>/dev/null)" ]]; then
-            echo "${PKG}@${GITHUB_REF_NAME} already on npm; skipping (immutable)"
-            exit 0
+            echo "${PKG}@${GITHUB_REF_NAME} already on npm; skipping (immutable)"; exit 0
           fi
-          provenance=()
-          [[ "${PRIVATE_REPO}" == "false" ]] && provenance=(--provenance)
-          # ./ anchor: npm parses a bare slash-containing arg as a GitHub
-          # repo spec, not a file path.
-          npm publish "./npm-tarballs/${PKG}-${GITHUB_REF_NAME}.tgz" \
-            --access public "${provenance[@]}"
+          npm publish "./npm-tarballs/${PKG}-${GITHUB_REF_NAME}.tgz" --access public
 
   crates-io:
     name: crates.io publish ${{ matrix.crate }}
