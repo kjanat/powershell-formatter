@@ -1,22 +1,11 @@
+---
 name: CI
-
-# Prose-only changes skip the full battery; keep both lists identical.
 on:
   push:
     branches: [master]
-    paths-ignore:
-      - "**/*.md"
-      - "**/LICENSE"
-      - "docs/**"
-      - .coderabbit.yaml
-      - .editorconfig
+    paths-ignore: ["**/*.md", "**/LICENSE", "docs/**", .coderabbit.yaml, .editorconfig]
   pull_request:
-    paths-ignore:
-      - "**/*.md"
-      - "**/LICENSE"
-      - "docs/**"
-      - .coderabbit.yaml
-      - .editorconfig
+    paths-ignore: ["**/*.md", "**/LICENSE", "docs/**", .coderabbit.yaml, .editorconfig]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -24,6 +13,7 @@ concurrency:
 
 permissions: { contents: read }
 env: { CARGO_TERM_COLOR: always }
+defaults: { run: { shell: bash } }
 
 jobs:
   rust:
@@ -39,9 +29,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with: { components: "clippy,rustfmt" }
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: taiki-e/install-action@v2
+        with: { tool: cargo-nextest }
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo test --workspace
+      - run: cargo lint
+      - run: cargo nextest run --workspace
+      - run: cargo test --workspace --doc
 
   schema-drift:
     name: schema drift
@@ -66,10 +59,10 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version: latest }
       - uses: kjanat/install-dprint@v2
-      - uses: cargo-bins/cargo-binstall@b629f84e79e8fbc4f76616a8efd340f3ea605cab # main, 2026-08-17
-      - name: Install tools
-        env: { GITHUB_TOKEN: "${{ github.token }}" }
-        run: cargo binstall --no-confirm wasm-bindgen-cli --version 0.2.127 --locked
+      - name: Get wasm-bindgen-cli version
+        run: bindgen="$(yq '.workspace.dependencies.wasm-bindgen' Cargo.toml)"; echo "bindgen=${bindgen#=}" >> "${GITHUB_ENV}"
+      - uses: taiki-e/install-action@v2
+        with: { tool: "wasm-bindgen-cli@${{ env.bindgen }}" }
       - name: dprint plugin end-to-end
         run: crates/dprint-plugin-pwsh/tests/e2e.sh
       - name: Build and test the npm package
@@ -112,7 +105,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with: { workspaces: ".\nfuzz" }
-      - run: cargo install cargo-fuzz --locked
+      - uses: taiki-e/install-action@v2
+        with: { tool: cargo-fuzz }
       - name: Seed fuzz corpus from the real-world corpus
         run: |
           mkdir -p "fuzz/corpus/${target}"
@@ -142,6 +136,8 @@ jobs:
         with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: taiki-e/install-action@v2
+        with: { tool: cargo-nextest }
       - name: Install the pinned PSScriptAnalyzer
         shell: pwsh
         run: |
@@ -159,8 +155,8 @@ jobs:
           ./tests/pssa-parity/generate-catalog.ps1
       - name: Differential tests against freshly generated fixtures
         run: |
-          cargo test -p pwsh-parser    --test oracle
-          cargo test -p pwsh-formatter --test pssa_parity
+          cargo nextest run -p pwsh-parser    --test oracle
+          cargo nextest run -p pwsh-formatter --test pssa_parity
       - name: Fail if committed fixtures drifted from the pinned versions
         # --exit-code, or the step reports drift and passes anyway. The pwsh
         # VERSION stamp is excluded: the runner's patch release is not ours

@@ -2,7 +2,7 @@
 
 Neither PowerShell nor PSScriptAnalyzer is a runtime dependency of anything
 this repository ships. Both are **development/CI oracles**: pinned versions
-generate deterministic fixtures that ordinary `cargo test` consumes without
+generate deterministic fixtures that ordinary `cargo nextest run` consumes without
 PowerShell installed.
 
 ## tests/powershell-oracle — the tokenizer oracle

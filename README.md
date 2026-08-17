@@ -109,7 +109,8 @@ wasm 188 KB (74 KB gz); npm tarball 82 KB.
 ```sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace                 # unit + oracle + parity + corpus + property
+cargo nextest run --workspace          # unit + oracle + parity + corpus + property
+cargo test --workspace --doc           # doctests (not yet supported by nextest)
 crates/dprint-plugin-pwsh/tests/e2e.sh   # real dprint end-to-end
 packages/formatter/build.sh && (cd packages/formatter && npm test)
 cargo +nightly fuzz run formatter      # see fuzz/README.md
@@ -117,7 +118,7 @@ cargo bench -p pwsh-formatter
 ```
 
 Regenerating oracle fixtures needs `pwsh` + PSScriptAnalyzer (pinned
-versions recorded next to the fixtures); normal `cargo test` does not.
+versions recorded next to the fixtures); normal `cargo nextest run` does not.
 
 ## Security model
 
