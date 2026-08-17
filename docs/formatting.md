@@ -83,6 +83,14 @@ Documented differences from `Invoke-Formatter`, all deliberate:
    left-hand side by the comment text; we leave such entries unaligned
    (their width still shapes the group). This avoids reordering comment and
    alignment padding.
+7. **Nesting depth.** PowerShell's own parser refuses scripts nested
+   deeper than roughly 10k–20k levels (`ScriptTooComplicated`); we parse
+   and format at least 32 000 levels on a 1 MiB stack — depth costs heap,
+   not call stack — with a 131 072-level sanity cap that declines the
+   usual way (input preserved, diagnostic emitted). Beyond pwsh's ceiling
+   there is no oracle to compare against, so those inputs are covered by
+   our own invariant tests — losslessness, idempotence, preservation —
+   rather than parity fixtures.
 
 ## Command and parameter casing
 

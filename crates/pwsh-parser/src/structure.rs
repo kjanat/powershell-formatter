@@ -51,7 +51,12 @@ pub struct Statement {
 }
 
 /// A node in the shallow structure tree.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// Parsing, [`Clone`], and [`Drop`] are all iterative and safe at any
+/// nesting depth (the tree can legitimately be tens of thousands of levels
+/// deep — see [`MAX_DEPTH`]). The derived `Debug` and `PartialEq` still
+/// recurse per level; they exist for tests over shallow trees.
+#[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Node {
     pub kind: NodeKind,
@@ -63,6 +68,61 @@ pub struct Node {
     pub children: Vec<Node>,
     /// Statements directly inside this node (not inside children).
     pub statements: Vec<Statement>,
+}
+
+/// The derived drop glue frees `children` recursively — one call-stack
+/// frame per nesting level, an abort at the depths this parser accepts.
+/// Reparent descendants onto a heap worklist instead.
+impl Drop for Node {
+    fn drop(&mut self) {
+        let mut stack = core::mem::take(&mut self.children);
+        while let Some(mut node) = stack.pop() {
+            stack.append(&mut node.children);
+        }
+    }
+}
+
+/// Derived clone glue recurses per nesting level exactly like derived
+/// drop; clone through an explicit worklist instead.
+impl Clone for Node {
+    fn clone(&self) -> Self {
+        fn shallow(n: &Node) -> Node {
+            Node {
+                kind: n.kind,
+                open: n.open,
+                close: n.close,
+                children: Vec::with_capacity(n.children.len()),
+                statements: n.statements.clone(),
+            }
+        }
+        struct Work<'a> {
+            src: &'a Node,
+            dst: Node,
+            next: usize,
+        }
+        let mut stack = vec![Work {
+            src: self,
+            dst: shallow(self),
+            next: 0,
+        }];
+        loop {
+            let top = stack.last_mut().expect("clone worklist is never empty");
+            if let Some(child) = top.src.children.get(top.next) {
+                top.next += 1;
+                stack.push(Work {
+                    src: child,
+                    dst: shallow(child),
+                    next: 0,
+                });
+            } else {
+                let done = stack.pop().expect("clone worklist is never empty").dst;
+                match stack.last_mut() {
+                    Some(parent) => parent.dst.children.push(done),
+                    None => return done,
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,17 +194,60 @@ fn block_kind(open: TokenKind) -> BlockKind {
 
 /// Maximum delimiter nesting the structural parser will descend into.
 ///
-/// `parse_into` recurses once per opening delimiter, so unbounded input
-/// depth would overflow the call stack — an abort, not a catchable panic.
-/// Measured thresholds: ~20k levels on a default 8 MiB thread stack, ~10k
-/// on Wasm's 4 MiB, and between 2k and 5k on a 1 MiB stack. PowerShell's
-/// own parser gives up well before any of those (`ScriptTooComplicated`,
-/// between 10k and 20k levels).
+/// Depth is a heap question: each level is one [`Frame`] on an explicit
+/// worklist (roughly a hundred bytes), so the bound no longer protects the
+/// call stack. It survives as an allocation sanity cap — past it, opening
+/// delimiters are consumed as ordinary tokens and the parse is declined
+/// (`NestingTooDeep`, input preserved byte-for-byte), the same contract as
+/// always.
 ///
-/// 1024 keeps a wide margin on the smallest stack we run on while staying
-/// far above anything a human writes — real scripts nest a couple of dozen
-/// deep, and the deliberately pathological nesting benchmark reaches 480.
-const MAX_DEPTH: u32 = 1024;
+/// 131 072 is 4× the 32 000-level guarantee pinned by the deep-nesting
+/// tests — which itself out-tolerates PowerShell's own parser
+/// (`ScriptTooComplicated` lands between 10k and 20k levels on pwsh 7.5.2)
+/// — while capping frame memory for hostile input around a dozen MiB.
+const MAX_DEPTH: usize = 131_072;
+
+/// Cap on `UnbalancedOpenDelimiter` diagnostics per parse.
+///
+/// Diagnosing every unclosed open was fine under the old depth bound, but
+/// at worklist depths it is six figures of noise nobody can act on — and
+/// quadratic work, since each diagnostic's position scans its line. The
+/// outermost few are the actionable ones: a human fixes the first unclosed
+/// brace and reparses. `is_incomplete` covers the rest either way.
+const MAX_UNCLOSED_DIAGNOSTICS: usize = 32;
+
+/// One in-progress node plus the statement accumulator live inside it.
+/// Nesting pushes a `Frame`; a matching close pops it — the parse itself
+/// never recurses, so input depth costs heap, not call stack.
+struct Frame {
+    node: Node,
+    stmt_first: Option<u32>,
+    stmt_kind: StatementKind,
+    stmt_last: u32,
+    prev_significant: Option<TokenKind>,
+}
+
+impl Frame {
+    fn new(node: Node) -> Self {
+        Frame {
+            node,
+            stmt_first: None,
+            stmt_kind: StatementKind::Pipeline,
+            stmt_last: 0,
+            prev_significant: None,
+        }
+    }
+
+    fn flush_stmt(&mut self) {
+        if let Some(first) = self.stmt_first.take() {
+            self.node.statements.push(Statement {
+                first,
+                last: self.stmt_last,
+                kind: core::mem::replace(&mut self.stmt_kind, StatementKind::Pipeline),
+            });
+        }
+    }
+}
 
 struct Builder<'a> {
     source: &'a str,
@@ -153,7 +256,6 @@ struct Builder<'a> {
     matches: Vec<Option<u32>>,
     incomplete: bool,
     line_index: Option<LineIndex>,
-    depth: u32,
 }
 
 impl<'a> Builder<'a> {
@@ -171,37 +273,67 @@ impl<'a> Builder<'a> {
         ));
     }
 
-    /// Parse tokens `[*pos, end)` into `node` until a closing delimiter for
-    /// `node` or `end` is reached.
-    fn parse_into(&mut self, node: &mut Node, pos: &mut usize, end: usize) {
-        let mut stmt_first: Option<u32> = None;
-        let mut stmt_kind = StatementKind::Pipeline;
-        let mut stmt_last: u32 = 0;
-        let mut prev_significant: Option<TokenKind> = None;
-
-        macro_rules! flush_stmt {
-            () => {
-                if let Some(first) = stmt_first.take() {
-                    node.statements.push(Statement {
-                        first,
-                        last: stmt_last,
-                        kind: core::mem::replace(&mut stmt_kind, StatementKind::Pipeline),
-                    });
-                }
-            };
+    /// Attach a finished child whose delimiter was matched: record the
+    /// match pair and fold the child into the parent's statement
+    /// accumulator as one significant unit ending at the close token.
+    fn attach_closed(&mut self, parent: &mut Frame, done: Node, open_idx: u32, close_idx: u32) {
+        self.matches[open_idx as usize] = Some(close_idx);
+        self.matches[close_idx as usize] = Some(open_idx);
+        parent.stmt_last = close_idx;
+        if parent.stmt_first.is_none() {
+            parent.stmt_first = Some(open_idx);
         }
+        parent.prev_significant = Some(self.tokens[close_idx as usize].kind);
+        parent.node.children.push(done);
+    }
 
-        while *pos < end {
-            let i = *pos;
+    /// Attach a child that ran to end of input without its close.
+    fn attach_unclosed(&mut self, parent: &mut Frame, done: Node, open_idx: u32, diagnose: bool) {
+        self.incomplete = true;
+        if diagnose {
+            self.diag(
+                DiagnosticCode::UnbalancedOpenDelimiter,
+                "delimiter is never closed",
+                self.tokens[open_idx as usize].span,
+            );
+        }
+        let last = (self.tokens.len() - 1) as u32;
+        parent.stmt_last = last;
+        if parent.stmt_first.is_none() {
+            parent.stmt_first = Some(open_idx);
+        }
+        parent.prev_significant = Some(self.tokens[last as usize].kind);
+        parent.node.children.push(done);
+    }
+
+    /// Build the structure tree in one linear pass over the tokens, with an
+    /// explicit frame stack instead of recursion: an opening delimiter
+    /// pushes a [`Frame`], a matching close pops one. Nesting depth costs
+    /// heap only.
+    fn build_tree(&mut self) -> Node {
+        let mut stack = vec![Frame::new(Node {
+            kind: NodeKind::Root,
+            open: None,
+            close: None,
+            children: Vec::new(),
+            statements: Vec::new(),
+        })];
+        let end = self.tokens.len();
+        let mut pos = 0;
+
+        while pos < end {
+            let i = pos;
             let tok = self.tokens[i];
             let kind = tok.kind;
+            let depth = stack.len() - 1;
+            let top = stack.last_mut().expect("the root frame is never popped");
 
             if kind.is_trivia() {
                 if kind == TokenKind::Newline {
                     // A newline ends the statement unless the previous
                     // significant token keeps it open.
                     let continues = matches!(
-                        prev_significant,
+                        top.prev_significant,
                         Some(
                             TokenKind::Pipe
                                 | TokenKind::AndAnd
@@ -209,26 +341,26 @@ impl<'a> Builder<'a> {
                                 | TokenKind::Comma
                                 | TokenKind::Operator(_)
                         )
-                    ) || matches!(prev_significant, Some(k) if k.is_open_delimiter());
+                    ) || matches!(top.prev_significant, Some(k) if k.is_open_delimiter());
                     if !continues {
-                        flush_stmt!();
+                        top.flush_stmt();
                     }
                 }
-                *pos += 1;
+                pos += 1;
                 continue;
             }
 
             if kind == TokenKind::Semicolon {
-                stmt_last = i as u32;
-                flush_stmt!();
-                *pos += 1;
-                prev_significant = Some(kind);
+                top.stmt_last = i as u32;
+                top.flush_stmt();
+                pos += 1;
+                top.prev_significant = Some(kind);
                 continue;
             }
 
             if kind.is_open_delimiter() {
-                if self.depth >= MAX_DEPTH {
-                    // Too deep to descend safely. Consume the delimiter as an
+                if depth >= MAX_DEPTH {
+                    // Past the sanity cap. Consume the delimiter as an
                     // ordinary token so the scan still advances and stays
                     // lossless, and mark the parse incomplete — the formatter
                     // preserves incomplete input byte-for-byte.
@@ -240,76 +372,61 @@ impl<'a> Builder<'a> {
                         );
                     }
                     self.incomplete = true;
-                    if stmt_first.is_none() {
-                        stmt_first = Some(i as u32);
+                    if top.stmt_first.is_none() {
+                        top.stmt_first = Some(i as u32);
                     }
-                    stmt_last = i as u32;
-                    *pos += 1;
-                    prev_significant = Some(kind);
+                    top.stmt_last = i as u32;
+                    pos += 1;
+                    top.prev_significant = Some(kind);
                     continue;
                 }
-                let open_idx = i;
-                *pos += 1;
-                let mut child = Node {
+                pos += 1;
+                stack.push(Frame::new(Node {
                     kind: NodeKind::Delimited(block_kind(kind)),
-                    open: Some(open_idx as u32),
+                    open: Some(i as u32),
                     close: None,
                     children: Vec::new(),
                     statements: Vec::new(),
-                };
-                self.depth += 1;
-                self.parse_into(&mut child, pos, end);
-                self.depth -= 1;
-                if let Some(close_idx) = child.close {
-                    self.matches[open_idx] = Some(close_idx);
-                    self.matches[close_idx as usize] = Some(open_idx as u32);
-                    stmt_last = close_idx;
-                } else {
-                    self.incomplete = true;
-                    self.diag(
-                        DiagnosticCode::UnbalancedOpenDelimiter,
-                        "delimiter is never closed",
-                        tok.span,
-                    );
-                    stmt_last = (self.tokens.len() - 1) as u32;
-                }
-                if stmt_first.is_none() {
-                    stmt_first = Some(open_idx as u32);
-                }
-                prev_significant =
-                    Some(self.tokens.get(stmt_last as usize).map_or(kind, |t| t.kind));
-                node.children.push(child);
+                }));
                 continue;
             }
 
             if kind.is_close_delimiter() {
-                if let NodeKind::Delimited(_) = node.kind {
-                    let open_kind = self.tokens[node.open.unwrap_or(0) as usize].kind;
-                    if closes(open_kind, kind) {
-                        // `stmt_last` already indexes the last significant
-                        // token; the token before the close may be trivia.
-                        flush_stmt!();
-                        node.close = Some(i as u32);
-                        *pos += 1;
-                        return;
+                let matched = match top.node.kind {
+                    NodeKind::Delimited(_) => {
+                        let open_kind = self.tokens[top.node.open.unwrap_or(0) as usize].kind;
+                        closes(open_kind, kind)
                     }
+                    _ => false,
+                };
+                if matched {
+                    // `stmt_last` already indexes the last significant
+                    // token; the token before the close may be trivia.
+                    top.flush_stmt();
+                    top.node.close = Some(i as u32);
+                    pos += 1;
+                    let done = stack.pop().expect("the root frame is never popped");
+                    let parent = stack.last_mut().expect("a Delimited frame has a parent");
+                    let open_idx = done.node.open.unwrap_or(0);
+                    self.attach_closed(parent, done.node, open_idx, i as u32);
+                    continue;
                 }
                 // Unbalanced close: recorded by the lexer already; treat it
                 // as an ordinary token so downstream stays lossless.
                 self.incomplete = true;
-                if stmt_first.is_none() {
-                    stmt_first = Some(i as u32);
+                if top.stmt_first.is_none() {
+                    top.stmt_first = Some(i as u32);
                 }
-                stmt_last = i as u32;
-                *pos += 1;
-                prev_significant = Some(kind);
+                top.stmt_last = i as u32;
+                pos += 1;
+                top.prev_significant = Some(kind);
                 continue;
             }
 
             // Ordinary significant token.
-            if stmt_first.is_none() {
-                stmt_first = Some(i as u32);
-                stmt_kind = match kind {
+            if top.stmt_first.is_none() {
+                top.stmt_first = Some(i as u32);
+                top.stmt_kind = match kind {
                     TokenKind::Keyword(kw) => StatementKind::KeywordConstruct(kw),
                     TokenKind::Variable | TokenKind::SplattedVariable => {
                         // Assignment if an `=`-family operator appears before
@@ -320,19 +437,31 @@ impl<'a> Builder<'a> {
                 };
             }
             if kind == TokenKind::Operator(crate::token::OperatorKind::Assignment)
-                && stmt_kind == StatementKind::Pipeline
+                && top.stmt_kind == StatementKind::Pipeline
             {
-                stmt_kind = StatementKind::Assignment;
+                top.stmt_kind = StatementKind::Assignment;
             }
-            stmt_last = i as u32;
-            prev_significant = Some(kind);
-            *pos += 1;
+            top.stmt_last = i as u32;
+            top.prev_significant = Some(kind);
+            pos += 1;
         }
 
-        flush_stmt!();
-        if !matches!(node.kind, NodeKind::Root) && node.close.is_none() {
-            // Ran to end of input inside a delimiter.
+        // End of input: every frame still open is an unclosed delimiter.
+        // Unwind innermost-first so diagnostics come out in the same order
+        // the recursive descent produced them.
+        while stack.len() > 1 {
+            let mut done = stack.pop().expect("the root frame is never popped");
+            done.flush_stmt();
+            // The popped frame lived at depth `stack.len()`; only the
+            // outermost few unclosed opens get individual diagnostics.
+            let diagnose = stack.len() <= MAX_UNCLOSED_DIAGNOSTICS;
+            let parent = stack.last_mut().expect("a Delimited frame has a parent");
+            let open_idx = done.node.open.unwrap_or(0);
+            self.attach_unclosed(parent, done.node, open_idx, diagnose);
         }
+        let mut root = stack.pop().expect("the root frame is never popped");
+        root.flush_stmt();
+        root.node
     }
 }
 
@@ -345,24 +474,8 @@ fn build(source: &str, tokens: Vec<Token>, diagnostics: Vec<Diagnostic>) -> Pars
         matches: vec![None; tokens.len()],
         incomplete: had_lex_errors,
         line_index: None,
-        depth: 0,
     };
-    let mut root = Node {
-        kind: NodeKind::Root,
-        open: None,
-        close: None,
-        children: Vec::new(),
-        statements: Vec::new(),
-    };
-    let mut pos = 0;
-    let end = tokens.len();
-    builder.parse_into(&mut root, &mut pos, end);
-    // parse_into returns early on a matched close; the root loop consumes
-    // everything, but nested unclosed nodes may have left `pos` mid-stream.
-    while pos < end {
-        builder.parse_into(&mut root, &mut pos, end);
-    }
-
+    let root = builder.build_tree();
     let incomplete = builder.incomplete;
     ParseResult {
         matches: builder.matches,
@@ -437,18 +550,17 @@ mod tests {
 
     #[test]
     fn nesting_within_the_limit_still_parses() {
-        let depth = (MAX_DEPTH - 1) as usize;
+        let depth = MAX_DEPTH - 1;
         let src = format!("{}1{}", "(".repeat(depth), ")".repeat(depth));
         let r = parse(&src);
         assert!(!r.is_incomplete, "depth {depth} should parse normally");
     }
 
-    /// Deep nesting used to recurse until the call stack aborted the process
-    /// (measured: ~20k levels on 8 MiB, under 5k on a 1 MiB Wasm stack).
-    /// It must now degrade to an incomplete parse instead.
+    /// Nesting past the sanity cap must degrade to an incomplete parse —
+    /// never a crash — and stay lossless.
     #[test]
     fn nesting_past_the_limit_is_reported_not_fatal() {
-        for depth in [MAX_DEPTH as usize + 1, 50_000] {
+        for depth in [MAX_DEPTH + 1, 500_000] {
             for src in [
                 format!("{}1{}", "(".repeat(depth), ")".repeat(depth)),
                 "{".repeat(depth),
@@ -460,5 +572,57 @@ mod tests {
                 assert_eq!(spans, src.len(), "scan stayed lossless at depth {depth}");
             }
         }
+    }
+
+    /// The point of the worklist parser: 32k levels — past PowerShell's own
+    /// `ScriptTooComplicated` ceiling — parse, match, clone, and drop on a
+    /// 1 MiB stack. A spawned thread makes the stack size explicit instead
+    /// of inheriting whatever the test runner happens to provide.
+    #[test]
+    fn deep_nesting_on_a_one_mib_stack() {
+        std::thread::Builder::new()
+            .stack_size(1 << 20)
+            .spawn(|| {
+                let depth = 32_768;
+                let src = format!("{}1{}", "(".repeat(depth), ")".repeat(depth));
+                let r = parse(&src);
+                assert!(!r.is_incomplete, "32k levels are within tolerance");
+                let spans: usize = r.tokens.iter().map(|t| t.span.end - t.span.start).sum();
+                assert_eq!(spans, src.len(), "lossless at 32k levels");
+                // Outermost pair is matched end-to-end (one token per byte).
+                assert_eq!(r.matches[0], Some((src.len() - 1) as u32));
+                let deep_clone = r.root.clone();
+                drop(deep_clone);
+                drop(r);
+            })
+            .expect("spawn thread")
+            .join()
+            .expect("32k-deep parse must not overflow a 1 MiB stack");
+    }
+
+    /// Unbalanced input at the same depth: every unclosed open is
+    /// diagnosed, and tearing down the deep unclosed tree is just as
+    /// stack-safe as the balanced case.
+    #[test]
+    fn deep_unbalanced_nesting_on_a_one_mib_stack() {
+        std::thread::Builder::new()
+            .stack_size(1 << 20)
+            .spawn(|| {
+                let depth = 32_768;
+                let src = format!("{}1", "(".repeat(depth));
+                let r = parse(&src);
+                assert!(r.is_incomplete);
+                assert!(
+                    r.diagnostics
+                        .iter()
+                        .any(|d| d.code == DiagnosticCode::UnbalancedOpenDelimiter)
+                );
+                let spans: usize = r.tokens.iter().map(|t| t.span.end - t.span.start).sum();
+                assert_eq!(spans, src.len(), "lossless at 32k unbalanced levels");
+                drop(r);
+            })
+            .expect("spawn thread")
+            .join()
+            .expect("32k-deep unbalanced parse must not overflow a 1 MiB stack");
     }
 }

@@ -122,6 +122,11 @@ jobs:
             b="$(tr '/' '_' <<<"${f%.ps1}")"
             cp "${f}" "fuzz/corpus/${target}/${b}"
           done
+          # Synthetic deep-nesting seed: depth is heap-bounded in the
+          # parser, and the real-world corpus never nests past a few dozen
+          # levels — keep the fuzzer exploring depth anyway.
+          { printf '(%.0s' $(seq 4096); printf '1'; printf ')%.0s' $(seq 4096); } \
+            > "fuzz/corpus/${target}/deep-nesting"
       - name: Short fuzz pass
         run: |
           echo "Running fuzz target '${target}' for ${seconds} seconds"

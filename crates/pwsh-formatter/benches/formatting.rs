@@ -81,6 +81,16 @@ fn structural_parse(bencher: divan::Bencher<'_, '_>, name: &str) {
         .bench(|| parse(divan::black_box(&src)));
 }
 
+/// Nesting-depth scaling: the structural parse holds one heap frame per
+/// open delimiter, so time and memory should stay linear in depth.
+#[divan::bench(args = [1_024, 8_192, 32_768])]
+fn parse_depth(bencher: divan::Bencher<'_, '_>, depth: usize) {
+    let src = format!("{}1{}", "(".repeat(depth), ")".repeat(depth));
+    bencher
+        .counter(divan::counter::BytesCount::new(src.len()))
+        .bench(|| parse(divan::black_box(&src)));
+}
+
 #[divan::bench(args = ["tiny", "medium", "large", "nesting", "herestrings"])]
 fn format_full(bencher: divan::Bencher<'_, '_>, name: &str) {
     let src = inputs()

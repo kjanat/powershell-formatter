@@ -177,15 +177,22 @@ fn reflow_never_breaks_before_a_pulled_up_operator() {
 
 /// Deeply nested delimiters used to abort the process with a stack overflow
 /// inside the structural parser, taking down `psfmt`, the dprint plugin and
-/// the Wasm package with it. Formatting must decline the input instead.
+/// the Wasm package with it. Depth is a heap question now: anything under
+/// the parser's sanity cap formats normally, and only input past the cap is
+/// declined — never fatally.
 #[test]
-fn deep_nesting_is_declined_not_fatal() {
+fn deep_nesting_formats_within_the_cap_and_declines_past_it() {
     for depth in [2_000usize, 100_000] {
         let src = format!("{}1{}", "(".repeat(depth), ")".repeat(depth));
         let result = format(&src, &FormatOptions::default());
-        assert!(!result.formatted, "depth {depth} should be declined");
-        assert_eq!(result.text, src, "declined input must be byte-identical");
+        assert!(result.formatted, "depth {depth} formats normally");
     }
+    // Past the parser's 131 072-level sanity cap.
+    let depth = 200_000usize;
+    let src = format!("{}1{}", "(".repeat(depth), ")".repeat(depth));
+    let result = format(&src, &FormatOptions::default());
+    assert!(!result.formatted, "depth {depth} should be declined");
+    assert_eq!(result.text, src, "declined input must be byte-identical");
 }
 
 /// Regression (found by `fragment_soup_is_stable`): a line-leading `=` lexes
