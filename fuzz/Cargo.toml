@@ -29,7 +29,7 @@ path  = "fuzz_targets/formatter.rs"
 test  = false
 
 [dependencies]
-libfuzzer-sys        = "0.4"
+libfuzzer-sys  = "0.4"
 pwsh-formatter = { path = "../crates/pwsh-formatter" }
 pwsh-parser    = { path = "../crates/pwsh-parser" }
 

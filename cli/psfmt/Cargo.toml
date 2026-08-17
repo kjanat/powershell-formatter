@@ -9,7 +9,7 @@ license.workspace      = true
 
 [dependencies]
 pwsh-formatter.workspace = true
-serde_json.workspace      = true
+serde_json.workspace     = true
 
 [lints]
 workspace = true
