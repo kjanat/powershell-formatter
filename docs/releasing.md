@@ -19,9 +19,21 @@ every channel below. Publish steps skip versions that already exist, so a
 partially failed run is fixed by re-running it — never by mutating what
 already shipped.
 
-Secrets it needs: `DPRINT_PLUGIN_PWSH` (mirror release; see below),
-`NPM_TOKEN` (an npm automation token that can publish both packages), and
-`CARGO_REGISTRY_TOKEN` (a crates.io token with publish scope).
+Publishing runs in three [deployment environments] — `mirror`, `npm`, and
+`crates-io` (auto-created on first run; one job per published artifact,
+each linking the versioned page it published). Configure protection rules
+there if releases should wait for approval, and prefer scoping the secrets
+to their environment over repo-level:
+
+- `mirror`: `DPRINT_PLUGIN_PWSH` (fine-grained PAT for the mirror repo;
+  see below).
+- `npm`: `NPM_TOKEN` (automation token that can publish both packages;
+  provenance is attached automatically while the repo is public).
+- `crates-io`: the workflow first mints a short-lived token via crates.io
+  [trusted publishing] (configure it per crate for this repo +
+  `release.yml`); `CARGO_REGISTRY_TOKEN` is the fallback when that isn't
+  set up. Publishes retry through crates.io rate limits by honoring the
+  server's `try again after <date>` response.
 
 ## Artifacts
 
@@ -118,6 +130,8 @@ npm package tarball                    82 KB
 
 CI enforces a 1 MB raw budget on both wasm artifacts (see [`ci.yml`]).
 
+[deployment environments]: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments
+[trusted publishing]: https://crates.io/docs/trusted-publishing
 [`Cargo.toml`]: ../Cargo.toml
 [`.cargo/config.toml`]: ../.cargo/config.toml
 [`release.yml`]: ../.github/workflows/release.yml
