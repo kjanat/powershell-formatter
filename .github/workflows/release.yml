@@ -166,7 +166,9 @@ jobs:
           fi
           provenance=()
           [[ "${PRIVATE_REPO}" == "false" ]] && provenance=(--provenance)
-          npm publish "npm-tarballs/${PKG}-${GITHUB_REF_NAME}.tgz" \
+          # ./ anchor: npm parses a bare slash-containing arg as a GitHub
+          # repo spec, not a file path.
+          npm publish "./npm-tarballs/${PKG}-${GITHUB_REF_NAME}.tgz" \
             --access public "${provenance[@]}"
 
   crates-io:
