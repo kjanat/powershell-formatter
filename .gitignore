@@ -1,6 +1,12 @@
 /target/
-/node_modules/
-/dist/
+node_modules/
 coverage/
-*.wasm
 .DS_Store
+# Generated package output (built by packages/formatter/build.sh)
+/packages/formatter/dist/
+# Fuzzing state
+/fuzz/target/
+/fuzz/artifacts/
+/fuzz/corpus/
+/fuzz/coverage/
+*.log

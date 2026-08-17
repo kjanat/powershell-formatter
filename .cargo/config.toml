@@ -1,0 +1,8 @@
+[alias]
+wasm-plugin = "build -p dprint-plugin-powershell --profile wasm-release --target wasm32-unknown-unknown"
+
+# No stack-size override: rustc's wasm32 default is 1 MiB, and the deepest
+# call chain we have — structural parsing, bounded at MAX_DEPTH = 1024
+# delimiters — was measured to complete on a 1 MiB stack with room to spare
+# (overflow only appeared past ~2000 unguarded levels). A larger stack would
+# only grow every instance's linear memory for headroom nothing uses.

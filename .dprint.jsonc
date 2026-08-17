@@ -1,0 +1,58 @@
+{
+	"$schema": "https://dprint.dev/schemas/v0.json",
+	"useTabs": true,
+	"indentWidth": 2,
+	"newLineKind": "lf",
+	"exec": {
+		"commands": [
+			{ "command": "tombi format - --stdin-filename {{file_path}}", "exts": ["toml"] },
+			{ "command": "rustfmt --edition 2024", "exts": ["rs"] },
+		],
+	},
+	"yaml": { "printWidth": 160 },
+	"markdown": { "textWrap": "maintain", "emphasisKind": "asterisks" },
+	"json": {
+		"jsonTrailingCommaFiles": ["**/.vscode/*.json", "**/.zed/{settings,tasks,debug}.json", "**/tsconfig*.json"],
+		"associations": ["package.json"]
+	},
+	"shfmt": { "useTabs": true, "binaryNextLine": true, "switchCaseIndent": true },
+	"sortPackageJson": { "associations": ["package.json"] },
+	"jsonSchemaSort": { "associations": ["**/schema.json", "**/*.schema.json"] },
+	// Dogfood slot: enable once the plugin ships (repo public + release),
+	// with "https://plugins.dprint.dev/kjanat/powershell-formatter-<tag>.wasm"
+	// in plugins. Keys below match the FormatOptions serde surface (the
+	// plugin rejects unknown keys) — see docs/configuration.md.
+	// "powershell": {
+	// "braceStyle": "sameLine",
+	// "useTabs": true,
+	// "keywordCasing": "lower",
+	// "spaceAroundOperator": true,
+	// "spaceAroundPipe": true,
+	// "spaceAfterSeparator": true
+	// },
+	"excludes": [
+		"target/**",
+		// Test fixtures must stay byte-exact: oracle inputs pair with
+		// generated expectations, and corpus files intentionally contain
+		// unformatted / pathological code.
+		"tests/corpus/files/**",
+		"tests/powershell-oracle/inputs/**",
+		"tests/powershell-oracle/fixtures/**",
+		"tests/pssa-parity/inputs/**",
+		"tests/pssa-parity/expected/**",
+		// Dumped from a live pwsh by generate-catalog.ps1; reformatting it
+		// here would make every regeneration show a whole-file diff.
+		"tests/pssa-parity/catalog.json",
+		"fuzz/corpus/**",
+		"packages/formatter/dist/**",
+	],
+	"plugins": [
+		"https://plugins.dprint.dev/kjanat/json-schema-sort-0.1.2.wasm",
+		"https://plugins.dprint.dev/kjanat/shfmt-1.0.0.wasm",
+		"https://plugins.dprint.dev/kjanat/sortpackagejson-0.2.1.wasm",
+		"https://plugins.dprint.dev/g-plane/pretty_yaml-v0.6.0.wasm",
+		"https://plugins.dprint.dev/json-0.23.0.wasm",
+		"https://plugins.dprint.dev/markdown-0.22.1.wasm",
+		"https://plugins.dprint.dev/exec-0.7.3.json@a7898d5f1897e77bff474cec3d948c3ec3a7f455e32de2cc60c8adb9a5dd24aa",
+	],
+}

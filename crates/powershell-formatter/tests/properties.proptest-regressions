@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc da1b309353ba1a85c82e0e448cb11360a5f3639c2b7aea08d06bdc94fe04a413 # shrinks to src = "; foreach if       @args | 'str' <# block #>   | if | foreach 42 42 \"i $x\" 42 <# block #> $env:PATH `\n -eq 'str' 'str'"
+cc 5e8b7da07675e779ecbe2805c564da222f9b54d2751d9b783f3d8c759509dc26 # shrinks to src = "$env:PATH <# block #> $x Get-Item Get-Item $env:PATH $x $x $x $x |   $x $x 'str' Get-Item é🎉 | -eq 'str' && Get-Item $x $x"
+cc 4b93fe49ac0f6783b1bea2c57a097216fd241ed79c17f537fbbb23bfcd3551f6 # shrinks to src = "Get-Item \n = `\n | \n $x -eq"
