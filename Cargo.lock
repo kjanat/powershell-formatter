@@ -131,7 +131,7 @@ dependencies = [
 
 [[package]]
 name = "dprint-plugin-pwsh"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "dprint-core",
  "json-schema-sort",
@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "psfmt"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pwsh-formatter",
  "serde_json",
@@ -369,7 +369,7 @@ dependencies = [
 
 [[package]]
 name = "pwsh-formatter"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "divan",
  "proptest",
@@ -381,7 +381,7 @@ dependencies = [
 
 [[package]]
 name = "pwsh-formatter-wasm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pwsh-formatter",
  "serde",
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "pwsh-parser"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bitflags",
  "serde",

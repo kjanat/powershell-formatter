@@ -10,7 +10,7 @@ All released artifacts are built from the same commit and share one version
    `[workspace.dependencies]`, both npm package manifests, and the root npm
    lockfile — regenerate [`schema.json`] (its `$id` embeds the version), commit,
    merge to `master`.
-2. Tag that commit with the **bare semver** version (`0.1.0` — no `v`, no
+2. Tag that commit with the **bare semver** version (`0.2.0` — no `v`, no
    dash) and push the tag.
 
 [`release.yml`] does the rest: it refuses a tag that differs from the
@@ -76,7 +76,7 @@ to their environment over repo-level:
   only**: `kjanat/powershell` must never appear in anything durable —
   embedded URLs, docs, registry entries, or release chains — because the
   redirect's behavior through the proxy is not contractual.
-- Tag releases with **bare semver** (`0.1.0`, no `v` prefix, and no dash —
+- Tag releases with **bare semver** (`0.2.0`, no `v` prefix, and no dash —
   the proxy splits `<repo_name>-<tag>` on the dash) — the tag must equal
   the crate version, because URLs embed `CARGO_PKG_VERSION`. Tags on the
   monorepo and the mirror carry the same version.

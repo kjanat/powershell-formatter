@@ -1,6 +1,6 @@
 {
 	"name": "pwsh-formatter",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Fast, standalone PowerShell formatter for browsers and Node.js (WebAssembly, no PowerShell required)",
 	"keywords": [
 		"powershell",
