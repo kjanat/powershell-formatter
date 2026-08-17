@@ -18,7 +18,7 @@ path              = "src/bin/generate_schema.rs"
 required-features = ["schema"]
 
 [dependencies]
-pwsh-formatter.path = "../pwsh-formatter"
+pwsh-formatter.workspace = true
 
 dprint-core.workspace = true
 serde.workspace       = true

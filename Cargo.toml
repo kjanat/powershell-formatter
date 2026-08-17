@@ -26,6 +26,12 @@ serde-wasm-bindgen = "0.6"
 # Pinned exactly: the wasm-bindgen-cli used by packages/formatter/build.sh
 wasm-bindgen = "=0.2.127"
 
+# Workspace members, path for local builds + version for crates.io publish.
+# The version strings track workspace.package.version — bump them together
+# (the release workflow refuses a tag that disagrees with either).
+pwsh-formatter = { path = "crates/pwsh-formatter", version = "0.0.0" }
+pwsh-parser    = { path = "crates/pwsh-parser", version = "0.0.0" }
+
 [workspace.lints.clippy]
 all = "warn"
 

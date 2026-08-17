@@ -5,9 +5,10 @@ All released artifacts are built from the same commit and share one version
 
 ## Cutting a release
 
-1. Bump `workspace.package.version` in [`Cargo.toml`], regenerate
-   [`schema.json`] (its `$id` embeds the version), commit, merge to
-   `master`.
+1. Bump `workspace.package.version` in [`Cargo.toml`] — together with the
+   `pwsh-parser`/`pwsh-formatter` version strings right below it in
+   `[workspace.dependencies]` — regenerate [`schema.json`] (its `$id`
+   embeds the version), commit, merge to `master`.
 2. Tag that commit with the **bare semver** version (`0.1.0` — no `v`, no
    dash) and push the tag.
 
@@ -18,8 +19,9 @@ every channel below. Publish steps skip versions that already exist, so a
 partially failed run is fixed by re-running it — never by mutating what
 already shipped.
 
-Secrets it needs: `DPRINT_PLUGIN_PWSH` (mirror release; see below) and
-`NPM_TOKEN` (an npm automation token that can publish both packages).
+Secrets it needs: `DPRINT_PLUGIN_PWSH` (mirror release; see below),
+`NPM_TOKEN` (an npm automation token that can publish both packages), and
+`CARGO_REGISTRY_TOKEN` (a crates.io token with publish scope).
 
 ## Artifacts
 
@@ -29,6 +31,7 @@ Secrets it needs: `DPRINT_PLUGIN_PWSH` (mirror release; see below) and
 | dprint plugin      | `cargo wasm-plugin` (alias in [`.cargo/config.toml`]) | `plugin.wasm` + `schema.json` release on the artifact mirror |
 | npm: rich JS API   | [`packages/formatter/build.sh`]                       | `pwsh-formatter`                                             |
 | npm: wasm carrier  | [`packages/dprint-plugin/build.sh`]                   | `dprint-plugin-pwsh`                                         |
+| Rust crates        | `cargo publish` (dependency order)                    | crates.io: `pwsh-parser`, `pwsh-formatter`, `psfmt`          |
 
 ## dprint plugin conventions
 

@@ -13,7 +13,7 @@ publish                = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pwsh-formatter.path = "../pwsh-formatter"
+pwsh-formatter.workspace = true
 
 serde.workspace              = true
 serde-wasm-bindgen.workspace = true

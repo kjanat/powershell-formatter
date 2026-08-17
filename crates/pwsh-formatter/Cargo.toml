@@ -12,7 +12,7 @@ harness = false
 name    = "formatting"
 
 [dependencies]
-pwsh-parser.path = "../pwsh-parser"
+pwsh-parser.workspace = true
 
 schemars   = { workspace = true, optional = true }
 serde      = { workspace = true, features = ["derive"], optional = true }
