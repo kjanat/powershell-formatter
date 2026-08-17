@@ -2,8 +2,9 @@
 lint        = "clippy --workspace --all-targets --all-features -- -D warnings -D clippy::all"
 wasm-plugin = "build -p dprint-plugin-pwsh --profile wasm-release --target wasm32-unknown-unknown"
 
-# No stack-size override: rustc's wasm32 default is 1 MiB, and the deepest
-# call chain we have — structural parsing, bounded at MAX_DEPTH = 1024
-# delimiters — was measured to complete on a 1 MiB stack with room to spare
-# (overflow only appeared past ~2000 unguarded levels). A larger stack would
-# only grow every instance's linear memory for headroom nothing uses.
+# No stack-size override: rustc's wasm32 default is 1 MiB, and nothing
+# needs more — structural parsing is an explicit heap worklist (nesting
+# depth costs frames on the heap, not call stack; tree teardown and clone
+# are iterative too), so even the 32k-level nesting guarantee runs on the
+# default stack. A larger stack would only grow every instance's linear
+# memory for headroom nothing uses.
