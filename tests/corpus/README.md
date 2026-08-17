@@ -1,7 +1,7 @@
 # Real-world corpus
 
 Fixtures under `files/` feed the invariant tests in
-`crates/powershell-formatter/tests/corpus.rs`: no panics, losslessness of the
+`crates/pwsh-formatter/tests/corpus.rs`: no panics, losslessness of the
 scanner, deterministic and idempotent formatting, and preservation of
 protected content (strings, here-strings, comments) plus the significant
 token fingerprint.

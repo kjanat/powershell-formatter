@@ -16,7 +16,7 @@ mod token;
 pub use diag::{Diagnostic, DiagnosticCode, Severity};
 pub use lexer::{LexOutput, tokenize};
 pub use span::{LineIndex, Position, Span};
-pub use structure::{BlockKind, Node, NodeKind, ParseResult, StatementKind, parse};
+pub use structure::{BlockKind, Node, NodeKind, ParseResult, Statement, StatementKind, parse};
 pub use token::{Keyword, OperatorKind, Token, TokenFlags, TokenKind};
 
 #[cfg(test)]

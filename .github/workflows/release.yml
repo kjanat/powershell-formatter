@@ -39,8 +39,8 @@ jobs:
         with:
           node-version: latest
           registry-url: https://registry.npmjs.org
-      - uses: kjanat/install-dprint@v2
-      - uses: cargo-bins/cargo-binstall@main
+      - uses: kjanat/install-dprint@fc7e4f62965bab609a936c9e58ad4893bb9da961 # v2 (v2.1)
+      - uses: cargo-bins/cargo-binstall@b629f84e79e8fbc4f76616a8efd340f3ea605cab # main, 2026-08-17
       - name: Install the pinned wasm-bindgen-cli
         run: |
           pinned="$(sed -n 's/^wasm-bindgen *= *"=\([0-9.]*\)"$/\1/p' Cargo.toml)"

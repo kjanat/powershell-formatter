@@ -286,7 +286,8 @@ impl<'a> Builder<'a> {
                 if let NodeKind::Delimited(_) = node.kind {
                     let open_kind = self.tokens[node.open.unwrap_or(0) as usize].kind;
                     if closes(open_kind, kind) {
-                        stmt_last = i.saturating_sub(1) as u32;
+                        // `stmt_last` already indexes the last significant
+                        // token; the token before the close may be trivia.
                         flush_stmt!();
                         node.close = Some(i as u32);
                         *pos += 1;
@@ -410,6 +411,19 @@ mod tests {
         let r = parse("$a = 1; $b = 2\n$c = 3");
         assert_eq!(r.root.statements.len(), 3);
         assert_eq!(r.root.statements[0].kind, StatementKind::Assignment);
+    }
+
+    /// `Statement.last` must index the last *significant* token even when
+    /// trivia sits between it and the closing delimiter (`{ 1 }`: the
+    /// statement ends at `1`, not at the space before `}`).
+    #[test]
+    fn statement_last_skips_trivia_before_close() {
+        let r = parse("{ 1 }");
+        let child = &r.root.children[0];
+        assert_eq!(child.statements.len(), 1);
+        let stmt = child.statements[0];
+        assert!(!r.tokens[stmt.last as usize].kind.is_trivia());
+        assert_eq!(stmt.last, stmt.first);
     }
 
     #[test]
