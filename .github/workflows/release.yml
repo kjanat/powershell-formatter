@@ -1,13 +1,19 @@
 # Pushing a bare-semver tag (dash-free, equal to workspace.package.version)
 # publishes every distribution channel from that one commit:
 #
-#   verify ── build ──┬─ mirror     GitHub release on kjanat/dprint-plugin-pwsh
-#                     │             (plugin.wasm + schema.json).
-#                     │             Serves `dprint add kjanat/pwsh`.
-#                     ├─ npm        pwsh-formatter + dprint-plugin-pwsh,
-#                     │             per-package matrix.
-#                     └─ crates-io  pwsh-parser → pwsh-formatter → psfmt,
-#                                   serialized matrix in dependency order.
+#   verify ── build ──┬─ draft ─────┬─ github-release
+#                     ├─ mirror ────┤
+#                     ├─ npm ───────┤
+#                     └─ crates-io ─┘
+#
+#   draft       this repo's GitHub release, created draft with generated
+#               notes; github-release publishes it only after every other
+#               channel succeeded — a failed run leaves a private draft.
+#   mirror      GitHub release on kjanat/dprint-plugin-pwsh
+#               (plugin.wasm + schema.json). Serves `dprint add kjanat/pwsh`.
+#   npm         pwsh-formatter + dprint-plugin-pwsh, per-package matrix.
+#   crates-io   pwsh-parser → pwsh-formatter → psfmt, serialized matrix
+#               in dependency order.
 #
 # Every channel is immutable (npm, crates.io, GitHub releases, the plugins.dprint.dev cache):
 # a bad release is fixed by bumping the version and tagging again, never by replacing artifacts.
@@ -255,3 +261,43 @@ jobs:
           done
           echo "error: failed to publish ${CRATE} ${version}" >&2
           exit 1
+
+  draft:
+    name: draft the github release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: gh release create --draft
+        run: |
+          # Draft or published, a release for this tag means a prior (or
+          # re-)run already made it; leave it for the publish job.
+          if gh api "repos/${GITHUB_REPOSITORY}/releases" \
+            --jq ".[] | select(.tag_name == \"${GITHUB_REF_NAME}\") | .id" | grep -q .; then
+            echo "release ${GITHUB_REF_NAME} already exists; skipping draft"
+            exit 0
+          fi
+          gh release create "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}" \
+            --draft --title "${GITHUB_REF_NAME}" --verify-tag --generate-notes
+
+  github-release:
+    name: publish the github release
+    # The draft goes public only once every distribution channel has
+    # succeeded; a failed run leaves it as a maintainer-only draft.
+    needs: [draft, mirror, npm, crates-io]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: undraft
+        run: |
+          id="$(gh api "repos/${GITHUB_REPOSITORY}/releases" \
+            --jq "[.[] | select(.tag_name == \"${GITHUB_REF_NAME}\")][0].id")"
+          if [[ -z "${id}" || "${id}" == "null" ]]; then
+            echo "error: no release found for ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${id}" -F draft=false
