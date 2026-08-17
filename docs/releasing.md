@@ -20,8 +20,8 @@ every channel below. Publish steps skip versions that already exist, so a
 partially failed run is fixed by re-running it — never by mutating what
 already shipped.
 
-Publishing runs in three [deployment environments] — `dprint`, `npm`, and
-`crates-io` (auto-created on first run; one job per published artifact,
+Publishing runs in four [deployment environments] — `dprint`, `npm`, `jsr`,
+and `crates-io` (auto-created on first run; one job per published artifact,
 each linking the versioned page it published). Configure protection rules
 there if releases should wait for approval, and prefer scoping the secrets
 to their environment over repo-level:
@@ -30,6 +30,9 @@ to their environment over repo-level:
   see below).
 - `npm`: `NPM_TOKEN` (automation token that can publish both packages;
   provenance is attached automatically while the repo is public).
+- `jsr`: no secret at all — [JSR] authenticates GitHub Actions over OIDC,
+  which is why the job carries `id-token: write`. It works only once each
+  package is linked to this repository in its JSR settings (see below).
 - `crates-io`: the workflow first mints a short-lived token via crates.io
   [trusted publishing] (configure it per crate for this repo +
   `release.yml`); `CARGO_REGISTRY_TOKEN` is the fallback when that isn't
@@ -42,8 +45,8 @@ to their environment over repo-level:
 | ------------------ | ----------------------------------------------------- | ------------------------------------------------------------ |
 | `psfmt` native CLI | `cargo build --release -p psfmt`                      | platform binaries (not yet automated)                        |
 | dprint plugin      | `cargo wasm-plugin` (alias in [`.cargo/config.toml`]) | `plugin.wasm` + `schema.json` release on the artifact mirror |
-| npm: rich JS API   | `make wasm-formatter`                                 | `pwsh-formatter`                                             |
-| npm: wasm carrier  | `make wasm-plugin`                                    | `dprint-plugin-pwsh`                                         |
+| npm: rich JS API   | `make wasm-formatter`                                 | `pwsh-formatter`, `@kjanat/pwsh-formatter` on JSR            |
+| npm: wasm carrier  | `make wasm-plugin`                                    | `dprint-plugin-pwsh`, `@kjanat/dprint-plugin-pwsh` on JSR    |
 | Rust crates        | `cargo publish` (dependency order)                    | crates.io: `pwsh-parser`, `pwsh-formatter`, `psfmt`          |
 
 ## dprint plugin conventions
@@ -106,6 +109,33 @@ workflow stamps the tag version at publish time (`npm version
 `make wasm-plugin`; CI verifies the publishable file set with `npm pack --dry-run`
 (see the package's `test/pack.test.mjs`). npm publishes are immutable too.
 
+## JSR
+
+Both npm packages are cross-published to [JSR] under the `@kjanat` scope,
+from the same commit and at the same version: `@kjanat/pwsh-formatter` and
+`@kjanat/dprint-plugin-pwsh`. Each package carries a `jsr.json` next to its
+`package.json`; the release workflow refuses a tag that disagrees with
+either manifest, and `make jsr-check` (run in CI) dry-runs the publish so
+the file set, ESM rules, and ["slow types"] are verified before a tag exists.
+
+Two JSR facts shape the setup:
+
+- **The registry serves one entry point to every runtime.** Neither npm
+  entry survives that: the browser one fetches its wasm relative to itself
+  (Node has no `fetch` for `file:` URLs) and the Node one reads it from
+  disk (Deno loads JSR modules over https). The JSR export is therefore
+  [`universal.js`], which picks bytes-from-disk or fetch by URL scheme —
+  verified under both runtimes. npm keeps its two specialised entries.
+- **JSR types JavaScript from a sibling declaration only when told to.**
+  Each published entry starts with `// @ts-self-types="./index.d.ts"`;
+  without it JSR falls back to type inference, which it reports as an
+  unsupported JavaScript entrypoint.
+
+One-time setup per package, before the first release can publish: create
+the package under the scope at [jsr.io/new], then link it to this
+repository in its settings (Settings → GitHub Repository). OIDC publishing
+fails until that link exists — no token can substitute for it.
+
 ## Pinned toolchain pieces
 
 - `wasm-bindgen-cli` must match the `wasm-bindgen` version pinned in
@@ -133,6 +163,10 @@ CI enforces a 1 MB raw budget on both wasm artifacts (see [`ci.yml`]).
 
 [deployment environments]: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments
 [trusted publishing]: https://crates.io/docs/trusted-publishing
+[JSR]: https://jsr.io/docs/publishing-packages
+["slow types"]: https://jsr.io/docs/about-slow-types
+[jsr.io/new]: https://jsr.io/new
+[`universal.js`]: ../packages/formatter/universal.js
 [`Cargo.toml`]: ../Cargo.toml
 [`.cargo/config.toml`]: ../.cargo/config.toml
 [`release.yml`]: ../.github/workflows/release.yml

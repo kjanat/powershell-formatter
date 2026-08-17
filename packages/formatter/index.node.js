@@ -1,3 +1,4 @@
+// @ts-self-types="./index.d.ts"
 /**
  * Node.js entry point. Loads the wasm from disk synchronously on first use;
  * the API stays async to match the browser entry.

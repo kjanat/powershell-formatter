@@ -9,6 +9,8 @@ endif
 
 CARGO ?= cargo
 DPRINT ?= $(shell command -v dprint >/dev/null 2>&1 && printf dprint || printf 'npx -y dprint')
+JSR ?= $(shell command -v jsr >/dev/null 2>&1 && printf jsr || printf 'npx -y jsr')
+JSR_PACKAGES := packages/formatter packages/dprint-plugin
 NPM ?= npm
 WASM_BINDGEN ?= wasm-bindgen
 YQ ?= yq
@@ -24,6 +26,7 @@ FUZZ_HOST ?= $(shell rustc +nightly --print host-tuple)
 	schema schema-check wasm-plugin wasm-formatter wasm \
 	dprint-e2e oracle-test oracles fuzz fuzz-smoke \
 	install npm-build npm-test typecheck npm-check \
+	jsr-check jsr-publish \
 	build test check ci pack release clean
 
 fmt:
@@ -118,6 +121,20 @@ typecheck:
 	$(NPM) run typecheck
 
 npm-check: npm-build typecheck npm-test
+
+# Everything a real publish verifies (file set, ESM rules, slow types),
+# minus the upload. Needs the wasm artifacts, so run after npm-build.
+jsr-check:
+	for pkg in $(JSR_PACKAGES); do \
+		(cd "$${pkg}" && $(JSR) publish --dry-run --allow-dirty); \
+	done
+
+# Publishes from CI over OIDC; locally it opens a browser to authorize.
+# Skips versions already on the registry.
+jsr-publish:
+	for pkg in $(JSR_PACKAGES); do \
+		(cd "$${pkg}" && $(JSR) publish); \
+	done
 
 build: rust-build npm-build
 

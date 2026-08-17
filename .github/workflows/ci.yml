@@ -68,6 +68,8 @@ jobs:
         run: make install
       - name: Build and test npm workspaces
         run: make npm-check
+      - name: Verify the JSR publish (file set, ESM rules, slow types)
+        run: make jsr-check
       - name: Report artifact sizes and enforce budget
         run: |
           set -euo pipefail

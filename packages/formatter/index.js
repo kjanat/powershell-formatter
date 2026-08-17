@@ -1,3 +1,4 @@
+// @ts-self-types="./index.d.ts"
 /**
  * Browser entry point. The wasm is fetched relative to this module on first
  * use and the instance is cached; repeated formatting never re-instantiates.

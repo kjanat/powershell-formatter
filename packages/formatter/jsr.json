@@ -1,0 +1,10 @@
+{
+	"$schema": "https://jsr.io/schema/config-file.v1.json",
+	"name": "@kjanat/pwsh-formatter",
+	"version": "0.2.0",
+	"exports": "./universal.js",
+	"publish": {
+		"include": ["LICENSE", "README.md", "dist", "index.d.ts", "index.js", "jsr.json", "universal.js"],
+		"exclude": ["!dist"]
+	}
+}

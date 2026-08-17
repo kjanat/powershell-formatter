@@ -4,6 +4,7 @@
 #   verify ── build ──┬─ draft ─────┬─ github-release
 #                     ├─ mirror ────┤
 #                     ├─ npm ───────┤
+#                     ├─ jsr ───────┤
 #                     └─ crates-io ─┘
 #
 #   draft       this repo's GitHub release, created draft with generated
@@ -12,10 +13,12 @@
 #   mirror      GitHub release on kjanat/dprint-plugin-pwsh
 #               (plugin.wasm + schema.json). Serves `dprint add kjanat/pwsh`.
 #   npm         pwsh-formatter + dprint-plugin-pwsh, per-package matrix.
+#   jsr         the same two packages as @kjanat/*, per-package matrix,
+#               authenticated by OIDC alone.
 #   crates-io   pwsh-parser → pwsh-formatter → psfmt, serialized matrix
 #               in dependency order.
 #
-# Every channel is immutable (npm, crates.io, GitHub releases, the plugins.dprint.dev cache):
+# Every channel is immutable (npm, jsr, crates.io, GitHub releases, the plugins.dprint.dev cache):
 # a bad release is fixed by bumping the version and tagging again, never by replacing artifacts.
 # Publish jobs skip already-published versions so a partially failed run can simply be re-run.
 ---
@@ -53,6 +56,11 @@ jobs:
               exit 1
             fi
             workspace="${manifest%/package.json}"
+            jsrver="$(jq -r '.version' "${workspace}/jsr.json")"
+            if [[ "${jsrver}" != "${version}" ]]; then
+              echo "${workspace}/jsr.json version ${jsrver} != ${version}" >&2
+              exit 1
+            fi
             lockver="$(jq -r --arg workspace "${workspace}" '.packages[$workspace].version // empty' package-lock.json)"
             if [[ "${lockver}" != "${version}" ]]; then
               echo "package-lock.json ${workspace} version ${lockver:-missing} != ${version}" >&2
@@ -105,6 +113,16 @@ jobs:
         with: { name: release-assets, path: release-assets/, retention-days: 14, if-no-files-found: error }
       - uses: actions/upload-artifact@v7
         with: { name: npm-tarballs, path: npm-tarballs/, retention-days: 14, if-no-files-found: error }
+      # JSR publishes from the working tree, not a tarball, so it needs the
+      # generated (gitignored) artifacts restored into a fresh checkout.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: jsr-assets
+          path: |
+            packages/formatter/dist/
+            packages/dprint-plugin/plugin.wasm
+          retention-days: 14
+          if-no-files-found: error
 
   mirror:
     name: publish mirror release
@@ -167,6 +185,35 @@ jobs:
             echo "${PKG}@${GITHUB_REF_NAME} already on npm; skipping (immutable)"; exit 0
           fi
           npm publish "./npm-tarballs/${PKG}-${GITHUB_REF_NAME}.tgz" --access public
+
+  jsr:
+    name: jsr publish ${{ matrix.pkg }}
+    needs: [build]
+    runs-on: ubuntu-latest
+    # OIDC is the whole auth story here: no token, no secret. It requires the
+    # package to be linked to this repository in its JSR settings.
+    permissions: { contents: read, id-token: write }
+    environment:
+      name: jsr
+      url: https://jsr.io/@kjanat/${{ matrix.pkg }}@${{ github.ref_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: [
+          { pkg: pwsh-formatter, dir: packages/formatter },
+          { pkg: dprint-plugin-pwsh, dir: packages/dprint-plugin },
+        ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version-file: .node-version }
+      - uses: actions/download-artifact@v8
+        with: { name: jsr-assets, path: packages }
+      # Republishing an existing version is a no-op, so a re-run is safe.
+      - name: npx jsr publish (@kjanat/${{ matrix.pkg }})
+        working-directory: ${{ matrix.dir }}
+        run: npx --yes jsr publish
 
   crates-io:
     name: crates.io publish ${{ matrix.crate }}
@@ -286,7 +333,7 @@ jobs:
     name: publish the github release
     # The draft goes public only once every distribution channel has
     # succeeded; a failed run leaves it as a maintainer-only draft.
-    needs: [draft, mirror, npm, crates-io]
+    needs: [draft, mirror, npm, jsr, crates-io]
     runs-on: ubuntu-latest
     permissions: { contents: write }
     env:

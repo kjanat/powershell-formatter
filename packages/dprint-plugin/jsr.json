@@ -1,0 +1,10 @@
+{
+	"$schema": "https://jsr.io/schema/config-file.v1.json",
+	"name": "@kjanat/dprint-plugin-pwsh",
+	"version": "0.2.0",
+	"exports": "./index.js",
+	"publish": {
+		"include": ["LICENSE", "README.md", "index.d.ts", "index.js", "jsr.json", "plugin.wasm"],
+		"exclude": ["!plugin.wasm"]
+	}
+}
