@@ -5,19 +5,27 @@
 	"newLineKind": "lf",
 	"exec": {
 		"commands": [
-			{ "command": "tombi format - --stdin-filename {{file_path}}", "exts": ["toml"] },
-			{ "command": "rustfmt --edition 2024", "exts": ["rs"] },
+			{
+				"command": "tombi format - --stdin-filename {{file_path}}",
+				"exts": ["toml"],
+				"cacheKeyFiles": ["tombi.toml"]
+			},
+			{
+				"command": "rustfmt --edition 2024",
+				"exts": ["rs"],
+				"cacheKeyFiles": ["rustfmt.toml", "rust-toolchain.toml"],
+			},
 		],
 	},
 	"yaml": { "printWidth": 160 },
 	"markdown": { "textWrap": "maintain", "emphasisKind": "asterisks" },
+	"sortPackageJson": { "associations": ["**/package.json"] },
+	"jsonSchemaSort": { "associations": ["**/schema.json", "**/*.schema.json"] },
 	"json": {
 		"jsonTrailingCommaFiles": ["**/.vscode/*.json", "**/.zed/{settings,tasks,debug}.json", "**/tsconfig*.json"],
-		"associations": ["package.json"]
+		"associations": ["**/package.json", "**/*.{json,jsonc}"]
 	},
 	"shfmt": { "useTabs": true, "binaryNextLine": true, "switchCaseIndent": true },
-	"sortPackageJson": { "associations": ["package.json"] },
-	"jsonSchemaSort": { "associations": ["**/schema.json", "**/*.schema.json"] },
 	// Dogfood slot: enable once the plugin ships (repo public + release),
 	// with "https://plugins.dprint.dev/kjanat/pwsh-<tag>.wasm"
 	// in plugins. Keys below match the FormatOptions serde surface (the
@@ -45,13 +53,15 @@
 		"tests/pssa-parity/catalog.json",
 		"fuzz/corpus/**",
 		"packages/formatter/dist/**",
+		"**/node_modules",
+		"**/{package-lock.json,Cargo.lock}"
 	],
 	"plugins": [
+		"https://plugins.dprint.dev/json-0.23.0.wasm",
 		"https://plugins.dprint.dev/kjanat/json-schema-sort-0.1.2.wasm",
 		"https://plugins.dprint.dev/kjanat/shfmt-1.0.0.wasm",
 		"https://plugins.dprint.dev/kjanat/sortpackagejson-0.2.1.wasm",
 		"https://plugins.dprint.dev/g-plane/pretty_yaml-v0.6.0.wasm",
-		"https://plugins.dprint.dev/json-0.23.0.wasm",
 		"https://plugins.dprint.dev/markdown-0.22.1.wasm",
 		"https://plugins.dprint.dev/exec-0.7.3.json@a7898d5f1897e77bff474cec3d948c3ec3a7f455e32de2cc60c8adb9a5dd24aa",
 	],

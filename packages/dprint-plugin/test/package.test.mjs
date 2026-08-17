@@ -1,5 +1,5 @@
 // Tests the assembled package through @dprint/formatter — the same host
-// stack npm consumers use. Run `./build.sh` first (CI does); `node --test
+// stack npm consumers use. Run `make wasm-plugin` first (CI does); `node --test
 // test/` executes these. Mirrors crates/dprint-plugin-pwsh/tests/e2e.sh,
 // which exercises the identical artifact through the dprint CLI.
 import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import { test } from 'node:test';
 
 import { createFromBuffer } from '@dprint/formatter';
 
-import { getBuffer, getPath } from '../index.js';
+import { getBuffer, getPath } from '#js';
 
 test('accessors agree and point at the packaged wasm', () => {
 	assert.ok(getPath().endsWith('plugin.wasm'));
@@ -55,7 +55,7 @@ test('unknown config keys surface as diagnostics', () => {
 	formatter.setConfig({}, { frobnicate: true });
 	const diagnostics = formatter.getConfigDiagnostics();
 	assert.equal(diagnostics.length, 1);
-	assert.equal(diagnostics[0].propertyName, 'frobnicate');
+	assert.equal(diagnostics[0]?.propertyName, 'frobnicate');
 	formatter.setConfig({}, {});
 });
 

@@ -7,8 +7,9 @@ All released artifacts are built from the same commit and share one version
 
 1. Bump `workspace.package.version` in [`Cargo.toml`] — together with the
    `pwsh-parser`/`pwsh-formatter` version strings right below it in
-   `[workspace.dependencies]` — regenerate [`schema.json`] (its `$id`
-   embeds the version), commit, merge to `master`.
+   `[workspace.dependencies]`, both npm package manifests, and the root npm
+   lockfile — regenerate [`schema.json`] (its `$id` embeds the version), commit,
+   merge to `master`.
 2. Tag that commit with the **bare semver** version (`0.1.0` — no `v`, no
    dash) and push the tag.
 
@@ -41,8 +42,8 @@ to their environment over repo-level:
 | ------------------ | ----------------------------------------------------- | ------------------------------------------------------------ |
 | `psfmt` native CLI | `cargo build --release -p psfmt`                      | platform binaries (not yet automated)                        |
 | dprint plugin      | `cargo wasm-plugin` (alias in [`.cargo/config.toml`]) | `plugin.wasm` + `schema.json` release on the artifact mirror |
-| npm: rich JS API   | [`packages/formatter/build.sh`]                       | `pwsh-formatter`                                             |
-| npm: wasm carrier  | [`packages/dprint-plugin/build.sh`]                   | `dprint-plugin-pwsh`                                         |
+| npm: rich JS API   | `make wasm-formatter`                                 | `pwsh-formatter`                                             |
+| npm: wasm carrier  | `make wasm-plugin`                                    | `dprint-plugin-pwsh`                                         |
 | Rust crates        | `cargo publish` (dependency order)                    | crates.io: `pwsh-parser`, `pwsh-formatter`, `psfmt`          |
 
 ## dprint plugin conventions
@@ -98,18 +99,18 @@ is shaped for its consumer:
   mirrors (`https://cdn.jsdelivr.net/npm/dprint-plugin-pwsh@<version>/plugin.wasm`)
   or a local `node_modules` path.
 
-Both packages sit at version `0.0.0` in-tree; the release workflow stamps
-the tag version at publish time (`npm version --no-git-tag-version`), so
-the versions cannot drift from the workspace. The `plugin.wasm` inside
+Both package manifests are bumped alongside the Cargo workspace; the release
+workflow stamps the tag version at publish time (`npm version
+--no-git-tag-version`) and rejects drift. The `plugin.wasm` inside
 `packages/dprint-plugin` is generated output — gitignored, rebuilt by
-`build.sh`; CI verifies the publishable file set with `npm pack --dry-run`
+`make wasm-plugin`; CI verifies the publishable file set with `npm pack --dry-run`
 (see the package's `test/pack.test.mjs`). npm publishes are immutable too.
 
 ## Pinned toolchain pieces
 
 - `wasm-bindgen-cli` must match the `wasm-bindgen` version pinned in
   [`Cargo.toml`]'s `[workspace.dependencies]` (currently 0.2.127);
-  [`packages/formatter/build.sh`] refuses to build on a mismatch.
+  `make wasm-formatter` refuses to build on a mismatch.
 - Oracle fixtures record their generators: pwsh version in
   [`tests/powershell-oracle/fixtures/VERSION`], PSScriptAnalyzer version in
   [`tests/pssa-parity/expected/VERSION`] (the generators and CI install
@@ -136,9 +137,7 @@ CI enforces a 1 MB raw budget on both wasm artifacts (see [`ci.yml`]).
 [`.cargo/config.toml`]: ../.cargo/config.toml
 [`release.yml`]: ../.github/workflows/release.yml
 [`packages/formatter`]: ../packages/formatter
-[`packages/formatter/build.sh`]: ../packages/formatter/build.sh
 [`packages/dprint-plugin`]: ../packages/dprint-plugin
-[`packages/dprint-plugin/build.sh`]: ../packages/dprint-plugin/build.sh
 [`@dprint/formatter`]: https://github.com/dprint/js-formatter
 [`schema.json`]: ../crates/dprint-plugin-pwsh/deployment/schema.json
 [`tests/powershell-oracle/fixtures/VERSION`]: ../tests/powershell-oracle/fixtures/VERSION

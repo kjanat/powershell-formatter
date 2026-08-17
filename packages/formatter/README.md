@@ -43,4 +43,4 @@ accept a `CommandCatalog` for canonical command/parameter casing).
 ## Runtimes
 
 One API shape everywhere: the `node` export condition loads the wasm from
-disk, the default (browser) entry fetches it. Node.js ≥ 18.
+disk, the default (browser) entry fetches it. Node.js ≥ 18.19.

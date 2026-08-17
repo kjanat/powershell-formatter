@@ -112,7 +112,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo nextest run --workspace          # unit + oracle + parity + corpus + property
 cargo test --workspace --doc           # doctests (not yet supported by nextest)
 crates/dprint-plugin-pwsh/tests/e2e.sh   # real dprint end-to-end
-packages/formatter/build.sh && (cd packages/formatter && npm test)
+make wasm-formatter && (cd packages/formatter && npm test)
 cargo +nightly fuzz run formatter      # see fuzz/README.md
 cargo bench -p pwsh-formatter
 ```

@@ -1,6 +1,6 @@
 {
 	"name": "dprint-plugin-pwsh",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "PowerShell dprint plugin (plugin.wasm) packaged for @dprint/formatter hosts",
 	"keywords": [
 		"powershell",
@@ -16,27 +16,43 @@
 	},
 	"license": "MIT",
 	"type": "module",
+	"imports": {
+		"#js": {
+			"types": "./index.d.ts",
+			"default": "./index.js"
+		},
+		"#pkg": "./package.json"
+	},
 	"exports": {
 		".": {
 			"types": "./index.d.ts",
 			"default": "./index.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"main": "./index.js",
 	"types": "./index.d.ts",
 	"files": [
-		"index.js",
-		"index.d.ts",
-		"plugin.wasm"
+		"/index.*",
+		"/plugin.wasm"
 	],
 	"scripts": {
-		"build": "./build.sh",
-		"test": "node --test"
+		"build": "run --dir=../.. wasm-plugin",
+		"prepack": "run build",
+		"pretest": "run build",
+		"test": "node --test",
+		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@dprint/formatter": "^0.5.1"
+		"@dprint/formatter": "^0.5.1",
+		"@types/node": "^26.2.0",
+		"runner-run": "^0.25.1",
+		"typescript": "^7.0.2"
 	},
 	"engines": {
-		"node": ">=18"
+		"node": ">=18.19"
+	},
+	"volta": {
+		"extends": "../../package.json"
 	}
 }

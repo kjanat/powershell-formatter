@@ -40,6 +40,19 @@ jobs:
               exit 1
             fi
           done
+          for manifest in packages/formatter/package.json packages/dprint-plugin/package.json; do
+            pkgver="$(jq -r '.version' "${manifest}")"
+            if [[ "${pkgver}" != "${version}" ]]; then
+              echo "${manifest} version ${pkgver} != ${version}" >&2
+              exit 1
+            fi
+            workspace="${manifest%/package.json}"
+            lockver="$(jq -r --arg workspace "${workspace}" '.packages[$workspace].version // empty' package-lock.json)"
+            if [[ "${lockver}" != "${version}" ]]; then
+              echo "package-lock.json ${workspace} version ${lockver:-missing} != ${version}" >&2
+              exit 1
+            fi
+          done
 
   build:
     name: build + test all artifacts
@@ -51,17 +64,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-unknown-unknown }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version: latest }
+        with: { node-version-file: .node-version }
       - uses: kjanat/install-dprint@v2
       - name: Get wasm-bindgen-cli version
         run: bindgen="$(yq '.workspace.dependencies.wasm-bindgen' Cargo.toml)"; echo "bindgen=${bindgen#=}" >> "${GITHUB_ENV}"
       - uses: taiki-e/install-action@v2
-        with: { tool: "wasm-bindgen-cli@${{ env.bindgen }}" }
+        with: { tool: "wasm-bindgen-cli@${{ env.bindgen }},tombi" }
       - name: Build plugin.wasm and schema.json
         run: |
-          cargo build -p dprint-plugin-pwsh --profile wasm-release \
-            --target wasm32-unknown-unknown
-          cargo run -p dprint-plugin-pwsh --features schema --bin generate-schema
+          make wasm-plugin
+          make schema
           # The committed schema must match the tagged source, and its $id
           # must embed exactly this version (proves CARGO_PKG_VERSION — and
           # so every URL baked into the plugin — agrees with the tag).
@@ -75,21 +87,14 @@ jobs:
           # Same budget CI enforces; a release must never ship past it.
           [[ "$(stat -c%s release-assets/plugin.wasm)" -le 1048576 ]]
       - name: dprint plugin end-to-end
-        run: crates/dprint-plugin-pwsh/tests/e2e.sh
+        run: make dprint-e2e
+      - name: Install npm workspace
+        run: make install
       - name: Build, test, and pack the npm packages
+        env: { PACK_DIR: "${{ github.workspace }}/npm-tarballs" }
         run: |
-          mkdir npm-tarballs
-          for dir in packages/formatter packages/dprint-plugin; do
-            pushd "${dir}" >/dev/null
-            bash build.sh
-            [[ -f package-lock.json ]] && npm ci
-            npm test
-            # Stamp the tag version at pack time; the tree stays at 0.0.0.
-            npm version "${GITHUB_REF_NAME}" --no-git-tag-version --allow-same-version
-            npm pack --pack-destination "${GITHUB_WORKSPACE}/npm-tarballs"
-            popd >/dev/null
-          done
-          ls -la npm-tarballs
+          make pack
+          make npm-test
       - uses: actions/upload-artifact@v7
         with: { name: release-assets, path: release-assets/, retention-days: 14, if-no-files-found: error }
       - uses: actions/upload-artifact@v7
@@ -141,8 +146,10 @@ jobs:
       fail-fast: false
       matrix: { pkg: [pwsh-formatter, dprint-plugin-pwsh] }
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version: latest, registry-url: https://registry.npmjs.org }
+        with: { node-version-file: .node-version, registry-url: https://registry.npmjs.org }
       - uses: actions/download-artifact@v8
         with: { name: npm-tarballs, path: npm-tarballs }
       - name: npm publish (${{ matrix.pkg }})

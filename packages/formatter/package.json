@@ -1,6 +1,6 @@
 {
 	"name": "pwsh-formatter",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Fast, standalone PowerShell formatter for browsers and Node.js (WebAssembly, no PowerShell required)",
 	"keywords": [
 		"powershell",
@@ -16,27 +16,52 @@
 	},
 	"license": "MIT",
 	"type": "module",
+	"imports": {
+		"#js": {
+			"types": "./index.d.ts",
+			"node": "./index.node.js",
+			"default": "./index.js"
+		},
+		"#wasm": {
+			"types": "./dist/pwsh_formatter_wasm.d.ts",
+			"default": "./dist/pwsh_formatter_wasm.js"
+		},
+		"#wasm/bg": {
+			"types": "./dist/pwsh_formatter_wasm_bg.wasm.d.ts",
+			"default": "./dist/pwsh_formatter_wasm_bg.wasm"
+		},
+		"#pkg": "./package.json"
+	},
 	"exports": {
 		".": {
 			"types": "./index.d.ts",
 			"node": "./index.node.js",
 			"default": "./index.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"main": "./index.node.js",
 	"types": "./index.d.ts",
 	"files": [
-		"index.js",
-		"index.node.js",
-		"index.d.ts",
-		"dist/pwsh_formatter_wasm.js",
-		"dist/pwsh_formatter_wasm_bg.wasm"
+		"/index.*",
+		"/dist/"
 	],
 	"scripts": {
-		"build": "./build.sh",
-		"test": "node --test"
+		"build": "run --dir=../.. wasm-formatter",
+		"prepack": "run build",
+		"pretest": "run build",
+		"test": "node --test",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@types/node": "^26.2.0",
+		"runner-run": "^0.25.1",
+		"typescript": "^7.0.2"
 	},
 	"engines": {
-		"node": ">=18"
+		"node": ">=18.19"
+	},
+	"volta": {
+		"extends": "../../package.json"
 	}
 }

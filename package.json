@@ -1,0 +1,33 @@
+{
+	"$schema": "https://www.schemastore.org/package.json",
+	"name": "powershell-formatter-root",
+	"private": true,
+	"workspaces": [
+		"packages/*"
+	],
+	"scripts": {
+		"test": "npm test --workspaces",
+		"typecheck": "npm run typecheck --workspaces"
+	},
+	"devDependencies": {
+		"runner-run": "^0.25.1",
+		"typescript": "^7.0.2"
+	},
+	"packageManager": "npm@11.19.0",
+	"devEngines": {
+		"packageManager": {
+			"name": "npm",
+			"version": "11.19.0",
+			"onFail": "download"
+		},
+		"runtime": {
+			"name": "node",
+			"version": "26.7.0",
+			"onFail": "ignore"
+		}
+	},
+	"volta": {
+		"node": "26.7.0",
+		"npm": "11.19.0"
+	}
+}

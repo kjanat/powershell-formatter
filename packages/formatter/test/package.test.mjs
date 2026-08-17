@@ -1,10 +1,10 @@
 // Tests of the actual built package through its Node entry point.
-// Run `./build.sh` first (CI does); `node --test test/` executes these.
+// Run `make wasm-formatter` first (CI does); `node --test test/` executes these.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-import { defaultOptions, format, formatRange, initialize, version } from '../index.node.js';
+import { defaultOptions, format, formatRange, initialize, version } from '#js';
 
 test('formats the baseline example', async () => {
 	const result = await format('function foo {\n"hello"\n  }');
@@ -29,7 +29,10 @@ test('options are honored', async () => {
 });
 
 test('invalid options reject', async () => {
-	await assert.rejects(() => format('$x=1', { braceStyle: 'sideways' }));
+	await assert.rejects(
+		// @ts-expect-error Deliberately exercise runtime validation.
+		() => format('$x=1', { braceStyle: 'sideways' }),
+	);
 });
 
 test('malformed input is preserved with diagnostics', async () => {
@@ -40,6 +43,7 @@ test('malformed input is preserved with diagnostics', async () => {
 	assert.ok(result.diagnostics.length > 0);
 	assert.ok(result.diagnostics.some((d) => d.code === 'formatting-skipped'));
 	const d = result.diagnostics[0];
+	assert.ok(d);
 	assert.equal(typeof d.line, 'number');
 	assert.equal(typeof d.column, 'number');
 });
@@ -119,8 +123,9 @@ test('re-initializing with a different wasm source is reported', async () => {
 test('an incomplete range is rejected, not silently zeroed', async () => {
 	// Missing endLine/endColumn used to default to 0 — an invalid 1-based
 	// coordinate — and format the wrong region.
-	await assert.rejects(() =>
-		formatRange('if($x){1}', { startLine: 1, startColumn: 1 }),
+	await assert.rejects(
+		// @ts-expect-error Deliberately exercise runtime validation.
+		() => formatRange('if($x){1}', { startLine: 1, startColumn: 1 }),
 	);
 });
 
