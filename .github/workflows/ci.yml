@@ -68,6 +68,7 @@ jobs:
       - uses: kjanat/install-dprint@v2
       - uses: cargo-bins/cargo-binstall@b629f84e79e8fbc4f76616a8efd340f3ea605cab # main, 2026-08-17
       - name: Install tools
+        env: { GITHUB_TOKEN: "${{ github.token }}" }
         run: cargo binstall --no-confirm wasm-bindgen-cli --version 0.2.127 --locked
       - name: dprint plugin end-to-end
         run: crates/dprint-plugin-pwsh/tests/e2e.sh

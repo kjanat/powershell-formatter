@@ -59,6 +59,7 @@ jobs:
       - uses: kjanat/install-dprint@v2
       - uses: cargo-bins/cargo-binstall@b629f84e79e8fbc4f76616a8efd340f3ea605cab # main, 2026-08-17
       - name: Install the pinned wasm-bindgen-cli
+        env: { GITHUB_TOKEN: "${{ github.token }}" }
         run: |
           pinned="$(yq '.workspace.dependencies.wasm-bindgen' Cargo.toml)"
           cargo binstall --no-confirm wasm-bindgen-cli --version "${pinned#=}" --locked
