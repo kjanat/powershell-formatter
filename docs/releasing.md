@@ -20,12 +20,18 @@ every channel below. Publish steps skip versions that already exist, so a
 partially failed run is fixed by re-running it — never by mutating what
 already shipped.
 
-The same workflow can be **dispatched by hand** against a tag that already
-shipped (Actions → Release → Run workflow), choosing one channel or all of
-them: for a channel added after that release, or one that failed. It checks
-out and rebuilds from the tag, so the result is what the tag push would have
-produced; picking a single channel leaves this repo's GitHub release
-untouched.
+The same workflow can be **dispatched by hand** (Actions → Release → Run
+workflow) to publish one channel — or all of them — for a version that
+already shipped: a channel added after that release, or one that failed.
+
+A dispatch builds the ref it is dispatched from, not the tag. A channel
+whose packaging landed after the tag is absent from that tag's tree, so
+building the tag could never publish it. The version check is the guard
+instead: every manifest in the dispatched tree must still declare the
+version named in the `tag` input, so a dispatch can only ship the version
+it actually built — dispatch from `master` while it still carries that
+version, or from a branch off the tag with the new packaging applied.
+Picking a single channel leaves this repo's GitHub release untouched.
 
 Publishing runs in four [deployment environments] — `dprint`, `npm`, `jsr`,
 and `crates-io` (auto-created on first run; one job per published artifact,

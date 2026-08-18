@@ -22,11 +22,14 @@
 # a bad release is fixed by bumping the version and tagging again, never by replacing artifacts.
 # Publish jobs skip already-published versions so a partially failed run can simply be re-run.
 #
-# The same run can be dispatched by hand for a tag that already shipped, with
-# one channel or all of them — for a channel added after that release, or one
-# that failed. Everything is rebuilt from the tag either way, so a dispatch
-# publishes exactly what a tag push would have. A single-channel dispatch
-# leaves the GitHub release alone.
+# The same run can be dispatched by hand to publish one channel (or all) for
+# a version that already shipped — a channel added after that release, or one
+# that failed. A dispatch builds the ref it was dispatched from, not the tag:
+# a channel whose packaging landed after the tag does not exist in that tag's
+# tree, so building it there could never publish. `verify` is the guard —
+# every manifest in the tree must still declare the version being published,
+# so a dispatch can only ship the version it actually built. A single-channel
+# dispatch leaves the GitHub release alone.
 ---
 name: Release
 on:
@@ -55,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
+        with: { persist-credentials: false }
       - run: |
           version="$(yq '.workspace.package.version' Cargo.toml)"
           if [[ "${TAG}" != "${version}" ]]; then
@@ -96,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
+        with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-unknown-unknown }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -195,7 +198,7 @@ jobs:
       matrix: { pkg: [pwsh-formatter, dprint-plugin-pwsh] }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
+        with: { persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version, registry-url: https://registry.npmjs.org }
       - uses: actions/download-artifact@v8
@@ -230,7 +233,7 @@ jobs:
         ]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
+        with: { persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version }
       - uses: actions/download-artifact@v8
@@ -260,7 +263,7 @@ jobs:
       CRATE: ${{ matrix.crate }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
+        with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Mint crates.io token (trusted publishing)
