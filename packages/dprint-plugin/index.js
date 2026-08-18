@@ -1,4 +1,3 @@
-// @ts-self-types="./index.d.ts"
 /**
  * Wasm carrier for the PowerShell dprint plugin, following the convention of
  * `@dprint/json`, `@dprint/typescript`, etc.: the package holds the artifact

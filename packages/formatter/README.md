@@ -11,8 +11,8 @@ Formatting with the dprint toolchain instead? Use
 
 Also on JSR as
 [`@kjanat/pwsh-formatter`](https://jsr.io/@kjanat/pwsh-formatter) — same
-version, same API, one entry point that loads the wasm from disk or by
-fetch depending on the runtime (`deno add jsr:@kjanat/pwsh-formatter`).
+version, same API, one TypeScript entry point that loads the wasm from disk
+or by fetch depending on the runtime (`deno add jsr:@kjanat/pwsh-formatter`).
 
 ## Usage
 
