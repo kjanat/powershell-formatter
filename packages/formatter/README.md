@@ -9,6 +9,11 @@ Formatting with the dprint toolchain instead? Use
 [`dprint-plugin-pwsh`](https://www.npmjs.com/package/dprint-plugin-pwsh)
 (or `dprint add kjanat/pwsh` from the CLI).
 
+Also on JSR as
+[`@kjanat/pwsh-formatter`](https://jsr.io/@kjanat/pwsh-formatter) — same
+version, same API, one TypeScript entry point that loads the wasm from disk
+or by fetch depending on the runtime (`deno add jsr:@kjanat/pwsh-formatter`).
+
 ## Usage
 
 ```js
