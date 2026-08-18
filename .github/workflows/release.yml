@@ -21,11 +21,33 @@
 # Every channel is immutable (npm, jsr, crates.io, GitHub releases, the plugins.dprint.dev cache):
 # a bad release is fixed by bumping the version and tagging again, never by replacing artifacts.
 # Publish jobs skip already-published versions so a partially failed run can simply be re-run.
+#
+# The same run can be dispatched by hand for a tag that already shipped, with
+# one channel or all of them — for a channel added after that release, or one
+# that failed. Everything is rebuilt from the tag either way, so a dispatch
+# publishes exactly what a tag push would have. A single-channel dispatch
+# leaves the GitHub release alone.
 ---
 name: Release
-on: { push: { tags: ["[0-9]+.[0-9]+.[0-9]+"] } }
+on:
+  push: { tags: ["[0-9]+.[0-9]+.[0-9]+"] }
+  # Re-run a channel for a tag that already shipped — a channel added after
+  # the fact, or one that failed. Publishes are idempotent, so "all" is safe
+  # too. Dispatch runs the workflow from the default branch but builds and
+  # publishes the tag named here.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish (e.g. 0.2.0)
+        required: true
+        type: string
+      channel:
+        description: Which channel to publish
+        default: all
+        type: choice
+        options: [all, mirror, npm, jsr, crates-io]
 permissions: { contents: read }
-env: { CARGO_TERM_COLOR: always }
+env: { CARGO_TERM_COLOR: always, TAG: "${{ inputs.tag || github.ref_name }}" }
 defaults: { run: { shell: bash } }
 jobs:
   verify:
@@ -33,11 +55,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { persist-credentials: false }
+        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
       - run: |
           version="$(yq '.workspace.package.version' Cargo.toml)"
-          if [[ "${GITHUB_REF_NAME}" != "${version}" ]]; then
-            echo "tag ${GITHUB_REF_NAME} != workspace.package.version ${version}" >&2
+          if [[ "${TAG}" != "${version}" ]]; then
+            echo "tag ${TAG} != workspace.package.version ${version}" >&2
             exit 1
           fi
           # The internal dep versions must move in lockstep, or a published
@@ -74,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { persist-credentials: false }
+        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-unknown-unknown }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -92,7 +114,7 @@ jobs:
           # must embed exactly this version (proves CARGO_PKG_VERSION — and
           # so every URL baked into the plugin — agrees with the tag).
           git diff --exit-code crates/dprint-plugin-pwsh/deployment/schema.json
-          grep -Fq "https://plugins.dprint.dev/kjanat/pwsh/${GITHUB_REF_NAME}/schema.json" \
+          grep -Fq "https://plugins.dprint.dev/kjanat/pwsh/${TAG}/schema.json" \
             crates/dprint-plugin-pwsh/deployment/schema.json
           mkdir release-assets
           cp target/wasm32-unknown-unknown/wasm-release/dprint_plugin_pwsh.wasm \
@@ -126,11 +148,12 @@ jobs:
 
   mirror:
     name: publish mirror release
+    if: ${{ github.event_name == 'push' || inputs.channel == 'all' || inputs.channel == 'mirror' }}
     needs: [build]
     runs-on: ubuntu-latest
     environment:
       name: dprint
-      url: https://github.com/kjanat/dprint-plugin-pwsh/releases/tag/${{ github.ref_name }}
+      url: https://github.com/kjanat/dprint-plugin-pwsh/releases/tag/${{ inputs.tag || github.ref_name }}
     env:
       GH_TOKEN: ${{ secrets.DPRINT_PLUGIN_PWSH }}
     steps:
@@ -138,7 +161,7 @@ jobs:
         with: { name: release-assets, path: release-assets }
       - name: gh release create on kjanat/dprint-plugin-pwsh
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${TAG}"
           if gh release view "${tag}" --repo kjanat/dprint-plugin-pwsh >/dev/null 2>&1; then
             echo "mirror release ${tag} already exists; leaving it untouched (immutable)"
             exit 0
@@ -160,18 +183,19 @@ jobs:
 
   npm:
     name: npm publish ${{ matrix.pkg }}
+    if: ${{ github.event_name == 'push' || inputs.channel == 'all' || inputs.channel == 'npm' }}
     needs: [build]
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write } # provenance
     environment:
       name: npm
-      url: https://www.npmjs.com/package/${{ matrix.pkg }}/v/${{ github.ref_name }}
+      url: https://www.npmjs.com/package/${{ matrix.pkg }}/v/${{ inputs.tag || github.ref_name }}
     strategy:
       fail-fast: false
       matrix: { pkg: [pwsh-formatter, dprint-plugin-pwsh] }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { persist-credentials: false }
+        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version, registry-url: https://registry.npmjs.org }
       - uses: actions/download-artifact@v8
@@ -181,13 +205,14 @@ jobs:
           PKG: ${{ matrix.pkg }}
           NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false }}
         run: |
-          if [[ -n "$(npm view "${PKG}@${GITHUB_REF_NAME}" version 2>/dev/null)" ]]; then
-            echo "${PKG}@${GITHUB_REF_NAME} already on npm; skipping (immutable)"; exit 0
+          if [[ -n "$(npm view "${PKG}@${TAG}" version 2>/dev/null)" ]]; then
+            echo "${PKG}@${TAG} already on npm; skipping (immutable)"; exit 0
           fi
-          npm publish "./npm-tarballs/${PKG}-${GITHUB_REF_NAME}.tgz" --access public
+          npm publish "./npm-tarballs/${PKG}-${TAG}.tgz" --access public
 
   jsr:
     name: jsr publish ${{ matrix.pkg }}
+    if: ${{ github.event_name == 'push' || inputs.channel == 'all' || inputs.channel == 'jsr' }}
     needs: [build]
     runs-on: ubuntu-latest
     # OIDC is the whole auth story here: no token, no secret. It requires the
@@ -195,7 +220,7 @@ jobs:
     permissions: { contents: read, id-token: write }
     environment:
       name: jsr
-      url: https://jsr.io/@kjanat/${{ matrix.pkg }}@${{ github.ref_name }}
+      url: https://jsr.io/@kjanat/${{ matrix.pkg }}@${{ inputs.tag || github.ref_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -205,7 +230,7 @@ jobs:
         ]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { persist-credentials: false }
+        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version }
       - uses: actions/download-artifact@v8
@@ -217,12 +242,13 @@ jobs:
 
   crates-io:
     name: crates.io publish ${{ matrix.crate }}
+    if: ${{ github.event_name == 'push' || inputs.channel == 'all' || inputs.channel == 'crates-io' }}
     needs: [build]
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write } # trusted publishing
     environment:
       name: crates-io
-      url: https://crates.io/crates/${{ matrix.crate }}/${{ github.ref_name }}
+      url: https://crates.io/crates/${{ matrix.crate }}/${{ inputs.tag || github.ref_name }}
     strategy:
       # Serialized in dependency order: each crate's publish verification
       # builds against its already-published sibling, and fail-fast stops
@@ -234,7 +260,7 @@ jobs:
       CRATE: ${{ matrix.crate }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { persist-credentials: false }
+        with: { ref: "refs/tags/${{ inputs.tag || github.ref_name }}", persist-credentials: false }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Mint crates.io token (trusted publishing)
@@ -244,7 +270,7 @@ jobs:
         env: { CARGO_REGISTRY_TOKEN: "${{ steps.auth.outputs.token }}" }
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME}"
+          version="${TAG}"
 
           crate_status() {
             curl --silent --output /dev/null --write-out '%{http_code}' \
@@ -311,6 +337,7 @@ jobs:
 
   draft:
     name: draft the github release
+    if: ${{ github.event_name == 'push' || inputs.channel == 'all' }}
     needs: [build]
     runs-on: ubuntu-latest
     permissions: { contents: write }
@@ -322,15 +349,16 @@ jobs:
           # Draft or published, a release for this tag means a prior (or
           # re-)run already made it; leave it for the publish job.
           if gh api "repos/${GITHUB_REPOSITORY}/releases" \
-            --jq ".[] | select(.tag_name == \"${GITHUB_REF_NAME}\") | .id" | grep -q .; then
-            echo "release ${GITHUB_REF_NAME} already exists; skipping draft"
+            --jq ".[] | select(.tag_name == \"${TAG}\") | .id" | grep -q .; then
+            echo "release ${TAG} already exists; skipping draft"
             exit 0
           fi
-          gh release create "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}" \
-            --draft --title "${GITHUB_REF_NAME}" --verify-tag --generate-notes
+          gh release create "${TAG}" -R "${GITHUB_REPOSITORY}" \
+            --draft --title "${TAG}" --verify-tag --generate-notes
 
   github-release:
     name: publish the github release
+    if: ${{ github.event_name == 'push' || inputs.channel == 'all' }}
     # The draft goes public only once every distribution channel has
     # succeeded; a failed run leaves it as a maintainer-only draft.
     needs: [draft, mirror, npm, jsr, crates-io]
@@ -342,9 +370,9 @@ jobs:
       - name: undraft
         run: |
           id="$(gh api "repos/${GITHUB_REPOSITORY}/releases" \
-            --jq "[.[] | select(.tag_name == \"${GITHUB_REF_NAME}\")][0].id")"
+            --jq "[.[] | select(.tag_name == \"${TAG}\")][0].id")"
           if [[ -z "${id}" || "${id}" == "null" ]]; then
-            echo "error: no release found for ${GITHUB_REF_NAME}" >&2
+            echo "error: no release found for ${TAG}" >&2
             exit 1
           fi
           gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${id}" -F draft=false
