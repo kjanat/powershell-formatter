@@ -12,8 +12,10 @@ and for a richer JS API (structured diagnostics, range formatting) see
 [`pwsh-formatter`](https://www.npmjs.com/package/pwsh-formatter).
 
 Also on JSR as
-[`@kjanat/dprint-plugin-pwsh`](https://jsr.io/@kjanat/dprint-plugin-pwsh),
-same version and API (`deno add jsr:@kjanat/dprint-plugin-pwsh`).
+[`@kjanat/dprint-plugin-pwsh`](https://jsr.io/@kjanat/dprint-plugin-pwsh)
+(`deno add jsr:@kjanat/dprint-plugin-pwsh`), same version. Its accessors are
+async there — `await getBytes()` reads the artifact from disk or fetches it,
+because Deno loads JSR modules over https where no on-disk copy exists.
 
 ## Usage
 

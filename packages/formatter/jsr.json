@@ -4,7 +4,18 @@
 	"version": "0.2.0",
 	"exports": "./universal.js",
 	"publish": {
-		"include": ["LICENSE", "README.md", "dist", "index.d.ts", "index.js", "jsr.json", "universal.js"],
-		"exclude": ["!dist"]
+		"include": [
+			"LICENSE",
+			"README.md",
+			"dist",
+			"index.d.ts",
+			"index.js",
+			"jsr.json",
+			"package.json",
+			"universal.js"
+		],
+		"exclude": [
+			"!dist"
+		]
 	}
 }

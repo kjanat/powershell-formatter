@@ -37,9 +37,9 @@ export function initialize(input) {
 
 /**
  * @param {string} source
- * @param {import('#js').FormatOptions} [options]
- * @param {import('#js').CommandCatalog} [catalog]
- * @returns {Promise<import('#js').FormatResult>}
+ * @param {import('./index.d.ts').FormatOptions} [options]
+ * @param {import('./index.d.ts').CommandCatalog} [catalog]
+ * @returns {Promise<import('./index.d.ts').FormatResult>}
  */
 export async function format(source, options, catalog) {
 	await initialize();
@@ -48,10 +48,10 @@ export async function format(source, options, catalog) {
 
 /**
  * @param {string} source
- * @param {import('#js').FormatRange} range
- * @param {import('#js').FormatOptions} [options]
- * @param {import('#js').CommandCatalog} [catalog]
- * @returns {Promise<import('#js').FormatResult>}
+ * @param {import('./index.d.ts').FormatRange} range
+ * @param {import('./index.d.ts').FormatOptions} [options]
+ * @param {import('./index.d.ts').CommandCatalog} [catalog]
+ * @returns {Promise<import('./index.d.ts').FormatResult>}
  */
 export async function formatRange(source, range, options, catalog) {
 	await initialize();
@@ -64,7 +64,7 @@ export async function version() {
 	return api.version();
 }
 
-/** @returns {Promise<Required<import('#js').FormatOptions>>} */
+/** @returns {Promise<Required<import('./index.d.ts').FormatOptions>>} */
 export async function defaultOptions() {
 	await initialize();
 	return api.defaultOptions();

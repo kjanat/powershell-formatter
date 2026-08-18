@@ -118,18 +118,37 @@ from the same commit and at the same version: `@kjanat/pwsh-formatter` and
 either manifest, and `make jsr-check` (run in CI) dry-runs the publish so
 the file set, ESM rules, and ["slow types"] are verified before a tag exists.
 
-Two JSR facts shape the setup:
+Both packages export a JSR-only `universal.js`, because the registry
+serves **one** entry point to every runtime and each package's npm entries
+assume one:
 
-- **The registry serves one entry point to every runtime.** Neither npm
-  entry survives that: the browser one fetches its wasm relative to itself
-  (Node has no `fetch` for `file:` URLs) and the Node one reads it from
-  disk (Deno loads JSR modules over https). The JSR export is therefore
-  [`universal.js`], which picks bytes-from-disk or fetch by URL scheme —
-  verified under both runtimes. npm keeps its two specialised entries.
+- `pwsh-formatter` fetches its wasm relative to itself in the browser
+  entry (Node has no `fetch` for `file:` URLs) and reads it from disk in
+  the Node entry (Deno loads JSR modules over https). Its
+  [`universal.js`] picks bytes-from-disk or fetch by URL scheme.
+- `dprint-plugin-pwsh` hands out an on-disk path and its bytes, which only
+  exist when the module itself was loaded from disk — over https both
+  accessors throw. Its [`universal.js` accessors] read or fetch by the same
+  rule, and `getPath()` rejects with a clear message rather than returning
+  a path that does not exist.
+
+Both were verified against a served copy of the exact published file set,
+under Deno over https and Node on disk. npm keeps its own entries
+untouched; neither `universal.js` matches the npm `files` globs.
+
+Two further JSR behaviours worth knowing, both established by dry run
+rather than assumption:
+
+- **`package.json` is published too** (JSR's default; it is in each
+  `publish.include` for that reason). Static specifiers like `#wasm` are
+  rewritten at publish time, but a *runtime* string — for example
+  `import.meta.resolve('#wasm/bg')` — is not, and package.json `imports`
+  do not apply to modules loaded over https. That is the failure the
+  universal entries route around, not a missing manifest.
 - **JSR types JavaScript from a sibling declaration only when told to.**
-  Each published entry starts with `// @ts-self-types="./index.d.ts"`;
-  without it JSR falls back to type inference, which it reports as an
-  unsupported JavaScript entrypoint.
+  Each published entry starts with `// @ts-self-types="./<name>.d.ts"`;
+  without it JSR falls back to type inference and reports an unsupported
+  JavaScript entrypoint.
 
 One-time setup per package, before the first release can publish: create
 the package under the scope at [jsr.io/new], then link it to this
@@ -167,6 +186,7 @@ CI enforces a 1 MB raw budget on both wasm artifacts (see [`ci.yml`]).
 ["slow types"]: https://jsr.io/docs/about-slow-types
 [jsr.io/new]: https://jsr.io/new
 [`universal.js`]: ../packages/formatter/universal.js
+[`universal.js` accessors]: ../packages/dprint-plugin/universal.js
 [`Cargo.toml`]: ../Cargo.toml
 [`.cargo/config.toml`]: ../.cargo/config.toml
 [`release.yml`]: ../.github/workflows/release.yml
