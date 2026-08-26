@@ -109,10 +109,62 @@ Upstream: PowerShell/PSScriptAnalyzer#2211.
 **We diverge** (normalize the newlines the formatter owns to the first
 inter-token style seen in the input, matching [`docs/formatting.md`](formatting.md)).
 
-## 8. The documented `TokenFlags` operator mask does not match behavior
+## 8. Unary operators receive inconsistent whitespace
 
-Reading current `UseConsistentWhitespace.cs` suggests `CheckOperator`
-covers only assignment/add/multiply-precedence operators via a bit-subset
-test — but the shipped 1.25.0 normalizes *every* binary dash-word operator
-(`-eq`, `-and`, `-band`, `-shl`, ...). Trust the binary, not the source you
-happen to be reading: our operator set was fixed empirically.
+Spacing every binary operator is desirable. The problem is that
+`CheckOperator` sometimes treats the same token as binary when it is being
+used as a unary operator. PSScriptAnalyzer 1.25.0 produces, among others:
+
+```powershell
+return -$x                                 # -> return - $x
+$a = @(-$b)                                # -> $a = @( - $b)
+$a = [int]-$b                              # -> $a = [int] - $b
+ConvertFrom-Json (-join (dotnet gitversion))
+# -> ConvertFrom-Json ( -join (dotnet gitversion))
+```
+
+The space after unary `-` and `+`, or before unary `-join` and `-split`, is
+undesirable. Conversely, word-based unary operators are handled
+inconsistently: `-split$b` becomes `-split $b`, while `-not$b` is left alone.
+
+Upstream: PowerShell/PSScriptAnalyzer#1239.
+
+<details>
+<summary>Why the token-based test behaves this way</summary>
+
+`UseConsistentWhitespace.IsOperator` checks `AssignmentOperator`,
+`BinaryPrecedenceAdd`, and `BinaryPrecedenceMultiply` through
+`TokenTraits.HasTrait`. This initially looked as though it selected only three
+operator categories. That interpretation was wrong.
+
+The binary-precedence members occupy the low nibble as packed numeric values,
+not as independent flag bits:
+
+| Precedence category | Value |
+| ------------------- | ----: |
+| Logical             | `0x1` |
+| Bitwise             | `0x2` |
+| Comparison          | `0x5` |
+| Coalesce            | `0x7` |
+| Add                 | `0x9` |
+| Multiply            | `0xA` |
+| Format              | `0xC` |
+| Range               | `0xD` |
+
+`HasTrait` tests `(GetTraits(kind) & flag) != None`, so any shared bit is
+enough. For example, Logical overlaps Add (`0x1 & 0x9`), Bitwise overlaps
+Multiply (`0x2 & 0xA`), Comparison overlaps Add (`0x5 & 0x9`), and Format
+overlaps Add (`0xC & 0x9`). Every binary-precedence value therefore overlaps
+either `BinaryPrecedenceAdd` or `BinaryPrecedenceMultiply`.
+
+This makes the predicate select every binary operator. `DotDot` is excluded
+explicitly later. `AndAnd` and `OrOr` are included explicitly because they do
+not carry the ordinary binary-precedence traits.
+
+That broad selection is fine for binary use. The bug appears because operator
+selection is token-based, while unary and binary uses can share a token kind.
+The later unary exception only recognizes a narrow `(`, unary `+` or `-`,
+variable pattern. It misses the contexts shown above and does not provide one
+coherent spacing policy for word-based unary operators.
+
+</details>
