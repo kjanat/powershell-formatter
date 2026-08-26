@@ -20,6 +20,8 @@ sees a zero-width gap before `|` and inserts a space — into the verbatim
 argument's territory — on every run. **We diverge**: spacing adjacent to a
 verbatim argument is never touched.
 
+Upstream: PowerShell/PSScriptAnalyzer#2209.
+
 ## 2. Statements after a nested pipeline stay over-indented
 
 ```powershell
@@ -45,9 +47,9 @@ $t |
 The indentation "restore" for a pipeline's extra level only fires at the
 end of the *outermost* pipeline, so `$x` — a fresh statement after the
 nested `Get-Process | Select-Object` pipeline — keeps the +1 level, and the
-closing `}` lands at the block-content level. (Current PSSA `master` has a
-different algorithm; the shipped 1.25.0 behaves as above.) **We reproduce
-this for parity.**
+closing `}` lands at the block-content level. This is fixed on PSSA `main`
+at PowerShell/PSScriptAnalyzer@4b0117ca7d2887711c9699f467ba7171f8859156;
+the shipped 1.25.0 behaves as above. **We reproduce this for parity.**
 
 ## 3. Trailing whitespace is left behind when blocks expand
 
@@ -59,15 +61,19 @@ if ($x) {\n        break \n    }
 ```
 
 Corrections replace only the brace tokens, so the spaces that used to
-separate content from braces stay behind as trailing whitespace
-(`PSAvoidTrailingWhitespace` is not part of the formatting presets).
-**We reproduce this for parity.**
+separate content from braces stay behind as trailing whitespace.
+`PSAvoidTrailingWhitespace` can remove it when explicitly configured, but
+the brace rules still introduce it. **We reproduce this for parity.**
+
+Upstream: PowerShell/PSScriptAnalyzer#2210.
 
 ## 4. Asymmetric inner-brace spacing for one-line hashtables
 
 `@{a=1}` → `@{a = 1 }` — a space is enforced *before* `}` but not after
 `@{`, because `CheckInnerBrace`'s open-side check only looks at `LCurly`
 tokens and `@{` is `AtCurly`. **We reproduce this.**
+
+Upstream: PowerShell/PSScriptAnalyzer#1742.
 
 ## 5. Values stay glued to `=` in multi-line hashtables
 
@@ -94,6 +100,8 @@ because earlier fixes on the line grew it past the (fixed) range end, and
 the filter re-runs each iteration against shifted coordinates. **We
 diverge** (apply all corrections whose original extent is inside the
 range).
+
+Upstream: PowerShell/PSScriptAnalyzer#2211.
 
 ## 7. Mixed newlines are a hard error
 
