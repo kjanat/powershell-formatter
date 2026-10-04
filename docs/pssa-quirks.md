@@ -48,7 +48,7 @@ The indentation "restore" for a pipeline's extra level only fires at the
 end of the *outermost* pipeline, so `$x` — a fresh statement after the
 nested `Get-Process | Select-Object` pipeline — keeps the +1 level, and the
 closing `}` lands at the block-content level. This is fixed on PSSA `main`
-at PowerShell/PSScriptAnalyzer@4b0117ca7d2887711c9699f467ba7171f8859156;
+at [PowerShell/PSScriptAnalyzer@`4b0117ca7d`](https://github.com/PowerShell/PSScriptAnalyzer/commit/4b0117ca7d2887711c9699f467ba7171f8859156);
 the shipped 1.25.0 behaves as above. **We reproduce this for parity.**
 
 ## 3. Trailing whitespace is left behind when blocks expand
